@@ -1,0 +1,11 @@
+name: csci-716-final-project
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - black
+  - matplotlib
+  - numpy
+  - loguru
