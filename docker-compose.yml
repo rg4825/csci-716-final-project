@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+  final-project:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app/final-project/
+    container_name: csci-716-final-project
+    volumes:
+      - ../csci-716-final-project:/app/final-project/
