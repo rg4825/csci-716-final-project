@@ -1,9 +1,18 @@
 services:
   backend:
     build:
-      context: .
-      dockerfile: project/Dockerfile
-    working_dir: /app/final-project/
-    container_name: csci-716-final-project
+      context: backend
+      dockerfile: Dockerfile
+    working_dir: /app/backend/
+    container_name: backend
     volumes:
-      - ../csci-716-final-project:/app/final-project/
+      - ./backend/:/app/backend/
+
+#  frontend:
+#    build:
+#      context: frontend
+#      dockerfile: Dockerfile
+#    working_dir: /app/frontend/
+#    container_name: frontend
+#    volumes:
+#      - ./frontend/:/app/frontend
