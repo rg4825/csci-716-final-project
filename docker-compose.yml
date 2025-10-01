@@ -2,7 +2,7 @@ services:
   final-project:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: project/Dockerfile
     working_dir: /app/final-project/
     container_name: csci-716-final-project
     volumes:
