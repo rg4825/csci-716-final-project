@@ -1,9 +1,37 @@
 # file: voronoi.py
 # description: testing implementation of creating Voronoi diagrams
 
-import sys
 import math
-#import matplotlib.pyplot as plt
+
+class Edge:
+    def __init__(self, p1, p2):
+        if p1[0] < p2[0] or (p1[0] == p2[0] and p1[1] <= p2[1]):
+            self.p1 = p1
+            self.p2 = p2
+        else:
+            self.p1 = p2
+            self.p2 = p1
+        self.midpoint = ((self.p1[0] + self.p2[0]) / 2.0,
+                         (self.p1[1] + self.p2[1]) / 2.0)
+        if self.p1[0] - self.p2[0] == 0:
+            self.slope = None
+        else:
+            self.slope = (self.p1[1] - self.p2[1]) / (self.p1[0] - self.p2[0])
+        if self.slope is None:
+            self.perp_slope = 0
+        elif self.slope == 0:
+            self.perp_slope = None
+        else:
+            self.perp_slope = -1.0 / self.slope
+    
+    def __eq__(self, other_edge):
+        if not isinstance(other_edge, Edge):
+            return False
+        return self.p1 == other_edge.p1 and self.p2 == other_edge.p2
+    
+    def __hash__(self):
+        return hash((self.p1, self.p2))
+
 
 class Triangle:
     # circumcenter is a site of the Voronoi diagram
@@ -11,64 +39,59 @@ class Triangle:
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
+        self.edges = [Edge(self.p1, self.p2),
+                      Edge(self.p1, self.p3),
+                      Edge(self.p2, self.p3)]
         self.circumcenter = None
 
-    def __eq__(self, other):
-        assert isinstance(other, Triangle)
-
-    def get_edges(self):
-        edges = [sorted((self.p1, self.p2), key=lambda e: (e[0], e[1])), 
-                sorted((self.p2, self.p3), key=lambda e: (e[0], e[1])), 
-                sorted((self.p1, self.p3), key=lambda e: (e[0], e[1]))]
-        return edges
+    def __eq__(self, other_triangle):
+        if not isinstance(other_triangle, Triangle):
+            return False
+        for edge in self.edges:
+            if edge not in other_triangle.edges:
+                return False
+        return True
+    
+    def __hash__(self):
+        return hash((self.p1, self.p2, self.p3))
 
     def find_circumcenter(self):
         #find midpoints of two lines:
         if self.circumcenter != None:
             return self.circumcenter
-        midpoint1 = ((self.p1[0] + self.p2[0]) / 2.0,
-                     (self.p1[1] + self.p2[1]) / 2.0)
-        midpoint2 = ((self.p1[0] + self.p3[0]) / 2.0,
-                     (self.p1[1] + self.p3[1]) / 2.0)
-        #find slopes of same two lines
-        if self.p1[0] - self.p2[0] == 0:
-            slope1 = 'undefined'
-        else:
-            slope1 = (self.p1[1] - self.p2[1]) / (self.p1[0] - self.p2[0])
-        if self.p1[0] - self.p3[0] == 0:
-            slope2 = 'undefined'
-        else:
-            slope2 = (self.p1[1] - self.p3[1]) / (self.p1[0] - self.p3[0])
-        #find slope of perpendicular lines:
-        if slope1 == 'undefined':
-            perp_slope1 = 0
-        elif slope1 == 0:
-            perp_slope1 = 'undefined'
-        else:
-            perp_slope1 = -1.0 / slope1
-        if slope2 == 'undefined':
-            perp_slope2 = 0
-        elif slope2 == 0:
-            perp_slope2 = 'undefined'
-        else:
-            perp_slope2 = -1.0 / slope2
+        midpoint1 = self.edges[0].midpoint
+        midpoint2 = self.edges[1].midpoint
+        #find slopes of same two lines and perpendicular lines
+        perp_slope1 = self.edges[0].perp_slope
+        perp_slope2 = self.edges[1].perp_slope
         #calculate x, y where the perpendicular bisectors intersect:
-        if perp_slope1 == 'undefined':
+        if perp_slope1 is None:
             x = midpoint1[0]
             b = midpoint2[1] - (perp_slope2 * midpoint2[0])
             y = (perp_slope2 * x) + b
-        elif perp_slope2 == 'undefined':
+        elif perp_slope2 is None:
             x = midpoint2[0]
             b = midpoint1[1] - (perp_slope1 * midpoint1[0])
             y = (perp_slope1 * x) + b
+        elif perp_slope1 == 0:
+            y = midpoint1[1]
+            b = midpoint2[1] - (midpoint2[0] * perp_slope2)
+            x = (y - b) / perp_slope2
+        elif perp_slope2 == 0:
+            y = midpoint2[1]
+            b = midpoint1[1] - (midpoint1[0] * perp_slope1)
+            x = (y - b) / perp_slope1
         else:
-            #TODO: need to double-check my work on this one...
+            if perp_slope1 - perp_slope2 == 0:
+                #find better way to handle this error?
+                #might also need to handle collinear points...?
+                print("Error: perpendicular bisectors are parallel, can't find circumcenter")
+                exit(1)
             x = ((perp_slope1 * midpoint1[0]) - midpoint1[1] - (perp_slope2 * midpoint2[0]) + midpoint2[1]) / (perp_slope1 - perp_slope2)
             y = (perp_slope1 * (x - midpoint1[0])) + midpoint1[1]
         self.circumcenter = (x, y)
         return self.circumcenter
         
-
     def find_circumcircle(self):
         center = self.find_circumcenter()
         dist = math.sqrt(
@@ -90,15 +113,13 @@ def find_supertriangle(points):
     max_x = max(p[0] for p in points)
     min_y = min(p[1] for p in points)
     max_y = max(p[1] for p in points)
-    diff_x = max_x - min_x
-    diff_y = max_y - min_y
-    #TODO: edit supertriangle creation to NOT TOUCH ANY OF THE POLYGON'S SIDES
-    '''return Triangle(
-        (min_x - diff_x * 0.1, max_y - diff_y), 
-        (min_x - diff_x * 0.1, max_y + diff_y * 2), 
-        (min_x + diff_x * 1.7, max_y + diff_y * 0.5)
-    )'''
-    return Triangle((-5, -5), (6, -5), (1, 10)) #hard-coded in for testing
+    dx = max_x - min_x
+    dy = max_y - min_y
+    return Triangle( #added offsets to try to cover entire triangle, keep testing it
+        (min_x - (dx * 1.2), max_y + 0.1),
+        (max_x + 0.1, max_y + 0.1),
+        (max_x + 0.1, min_y - (dy * 1.2))
+    )
 
 
 def bowyer_watson(points):
@@ -119,7 +140,7 @@ def bowyer_watson(points):
         polygon = []
         to_remove = []
         for triangle in bad_triangles:
-            for edge in triangle.get_edges():
+            for edge in triangle.edges:
                 if edge in polygon:
                     to_remove.append(edge)
                 else:
@@ -132,7 +153,7 @@ def bowyer_watson(points):
         for triangle in bad_triangles:
             triangulation.remove(triangle)
         for edge in polygon:
-            triangulation.append(Triangle(point, edge[0], edge[1]))
+            triangulation.append(Triangle(point, edge.p1, edge.p2))
 
     triangulation = [
         t for t in triangulation 
@@ -145,6 +166,7 @@ def bowyer_watson(points):
 
 
 def voronoi_from_triangulation(triangulation):
+    pass
     #for triangle in triangulation
         #for edge in triangle
             #if edge in another triangle
@@ -153,5 +175,3 @@ def voronoi_from_triangulation(triangulation):
                 #edge extends toward infinity in the direction perpendicular from the edge
     #make edge class that can also hold slope to handle extending out to infinity??
     #could also add custom comparator
-    for t in triangulation:
-        print(f'({t.p1}, {t.p2}, {t.p3})')
