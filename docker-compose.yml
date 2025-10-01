@@ -8,11 +8,13 @@ services:
     volumes:
       - ./backend/:/app/backend/
 
-#  frontend:
-#    build:
-#      context: frontend
-#      dockerfile: Dockerfile
-#    working_dir: /app/frontend/
-#    container_name: frontend
-#    volumes:
-#      - ./frontend/:/app/frontend
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    working_dir: /app/frontend/
+    container_name: frontend
+    ports:
+      - "6900:3000"
+    volumes:
+      - ./frontend/:/app/frontend/
