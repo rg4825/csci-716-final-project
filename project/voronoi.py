@@ -2,6 +2,7 @@
 # description: testing implementation of creating Voronoi diagrams
 
 import math
+import matplotlib.pyplot as plt # for testing
 
 class Edge:
     def __init__(self, p1, p2):
@@ -108,17 +109,19 @@ class Circle:
     
 
 def find_supertriangle(points):
-    #check if this needs to be edited at all
     min_x = min(p[0] for p in points)
     max_x = max(p[0] for p in points)
     min_y = min(p[1] for p in points)
     max_y = max(p[1] for p in points)
+    mid_x = (min_x + max_x) / 2.0
+    mid_y = (min_y + max_y) / 2.0
     dx = max_x - min_x
     dy = max_y - min_y
-    return Triangle( #added offsets to try to cover entire triangle, keep testing it
-        (min_x - (dx * 1.2), max_y + 0.1),
-        (max_x + 0.1, max_y + 0.1),
-        (max_x + 0.1, min_y - (dy * 1.2))
+    d = max(dx, dy) * 5.0 #added scaling factor to make large enough triangle
+    return Triangle(
+        (mid_x - d, mid_y - d),
+        (mid_x, mid_y + d),
+        (mid_x + d, mid_y - d)
     )
 
 
@@ -175,3 +178,54 @@ def voronoi_from_triangulation(triangulation):
                 #edge extends toward infinity in the direction perpendicular from the edge
     #make edge class that can also hold slope to handle extending out to infinity??
     #could also add custom comparator
+    figure, axes = plt.subplots()
+    plt.title('Delaunay Triangles & Voronoi Diagram')
+    circumcenters_x = []
+    circumcenters_y = []
+    for t in triangulation:
+        plt.plot([t.p1[0], t.p2[0]], [t.p1[1], t.p2[1]], c='b')
+        plt.plot([t.p1[0], t.p3[0]], [t.p1[1], t.p3[1]], c='b')
+        plt.plot([t.p2[0], t.p3[0]], [t.p2[1], t.p3[1]], c='b')
+        '''circumcircle = t.find_circumcircle()
+        circumcenters_x.append(circumcircle.center[0])
+        circumcenters_y.append(circumcircle.center[1])
+        axes.add_artist(
+            plt.Circle((circumcircle.center[0], circumcircle.center[1]), 
+                       circumcircle.radius, 
+                       fill=False)
+        )'''
+        circumcenters_x.append(t.find_circumcenter()[0])
+        circumcenters_y.append(t.find_circumcenter()[1])
+    plt.scatter(circumcenters_x, circumcenters_y, c='r')
+
+    current_xlim = plt.xlim()
+    current_ylim = plt.ylim()
+
+    for t1 in triangulation:
+        c1 = t1.find_circumcenter()
+        for edge in t1.edges:
+            edge_found = False
+            for t2 in triangulation:
+                if t1 == t2:
+                    continue
+                if edge in t2.edges:
+                    c2 = t2.find_circumcenter()
+                    plt.plot([c1[0], c2[0]], 
+                             [c1[1], c2[1]], 
+                             c='r', ls='--')
+                    edge_found = True
+                    
+            if not edge_found:
+                #TODO: 
+                perp_slope = edge.perp_slope
+                midpt = edge.midpoint
+                #find direction to edge from midpt, steps:
+                #treat find unit vector to find direction?
+                #find distance from midpt to c1
+                #extend to boundary using line formula
+
+    plt.xlim((0, current_xlim[1]))
+    plt.ylim((0, current_ylim[1]))
+
+    plt.savefig('test.png')
+    #plt.show()
