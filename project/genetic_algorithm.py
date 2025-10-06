@@ -1,18 +1,42 @@
 # file:         genetic_algorithm.py
 # description:  contains the classes and structure for a generic GA
 
+import numpy as np
 
 class Organism:
     """
     Represents a single organism as a part of the population.
     """
 
-    def __init__(self, chromosomes, fitness_func):
+    def __init__(self, chromosomes, fitness_func, genome):
+        """
+        :param chromosomes:     a list of tokens that can be considered this organism's "gene sequence"
+        :param fitness_func:    the function used to evaluate how "fit" this organism is
+        :param genome:          a list of all valid genetic bases
+        """
         self.chromosomes = chromosomes
-        self.fitness_score = fitness_func(self.chromosomes)
+        self.fitness_func = fitness_func
+        self.genome = genome
+
+        self.fitness = self.fitness_func(self.chromosomes)
 
     def reproduce(self, other):
-        pass
+        child_chromosome = []
+        rng = np.random.default_rng()
+        for (gene1, gene2) in zip(self.chromosomes, other.chromosomes):
+            p = rng.random()
+
+            if p < 0.45:
+                child_chromosome.append(gene1)
+                continue
+
+            elif p < 0.90:
+                child_chromosome.append(gene2)
+                continue
+
+            child_chromosome.append(np.random.choice(self.genome))
+
+        return Organism(child_chromosome, self.fitness_func, self.genome)
 
 
 class Population:
@@ -23,13 +47,13 @@ class Population:
     def __init__(
         self,
         population_size,
-        valid_genes,
+        genome,
         fitness_func,
         num_generations=100,
         threshold=0.01,
     ):
         self.population_size = population_size
-        self.valid_genes = valid_genes
+        self.genome = genome
         self.fitness_func = fitness_func
         self.num_generations = num_generations
         self.threshold = threshold
