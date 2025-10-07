@@ -24,6 +24,7 @@ class Organism:
     def reproduce(self, other):
         child_chromosome = []
         rng = np.random.default_rng()
+
         for gene1, gene2 in zip(self.chromosomes, other.chromosomes):
             p = rng.random()
 
@@ -48,6 +49,7 @@ class Population:
     def __init__(
         self,
         genome,
+        chromosome_len,
         fitness_func,
         generation_size=50,
         num_generations=100,
@@ -60,8 +62,9 @@ class Population:
         :param num_generations:     the maximum number of generations
         :param threshold:           if the fitness is beyond this threshold for an organism, stop evolution
         """
-        self.population_size = generation_size
         self.genome = genome
+        self.chromosome_len = chromosome_len
+        self.generation_size = generation_size
         self.fitness_func = fitness_func
         self.num_generations = num_generations
         self.threshold = threshold
@@ -85,4 +88,13 @@ class Population:
         pass
 
     def create_random_organism(self):
-        pass
+        """
+        :return:    An Organism with a random set of chromosomes.
+        """
+        chromosomes = []
+        rng = np.random.default_rng()
+
+        for i in range(self.chromosome_len):
+            chromosomes.append(rng.choice(self.genome))
+
+        return Organism(chromosomes, self.fitness_func, self.genome)
