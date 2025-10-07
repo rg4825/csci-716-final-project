@@ -78,7 +78,6 @@ class Population:
         of generations is hit.
         :return:
         """
-        pass
 
     def advance_one_generation(self):
         """
@@ -86,6 +85,17 @@ class Population:
         :return:
         """
         pass
+
+    def initialize_generation(self):
+        """
+        Updates self.current_generation if it's currently empty with self.generation_size number of organisms.
+        """
+        if self.current_generation:
+            return
+
+        for _ in range(self.generation_size):
+            o = self.create_random_organism()
+            self.current_generation.append(o)
 
     def create_random_organism(self):
         """
