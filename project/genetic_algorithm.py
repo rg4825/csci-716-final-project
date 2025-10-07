@@ -79,12 +79,23 @@ class Population:
         of generations is hit.
         :return:
         """
+        self.initialize_generation()  # this is considered generation 0
+        fittest_organism = self.current_generation[0]
+
+        for _ in range(self.num_generations):
+            fittest_organism = self.advance_one_generation()
+            self.current_generation += 1
+
+            if fittest_organism.fitness > self.threshold:
+                return fittest_organism
+
+        return fittest_organism
 
     def advance_one_generation(self, elitism=0.1, offspring_rate=0.5):
         """
         Advances the population by one generation. Changes the state of this Population object.
         Assumes that the current generation is already sorted by fitness.
-        :return:    the score of the fittest Organism from this generation
+        :return:    the fittest Organism from this generation
         """
         new_generation = []
         rng = np.random.default_rng()
@@ -100,7 +111,7 @@ class Population:
             new_generation.append(child)
 
         self.current_generation = sorted(new_generation, key = lambda o:o.fitness)  # sort the new generation by fitness
-        return self.current_generation[0].fitness
+        return self.current_generation[0]
 
     def initialize_generation(self):
         """
@@ -110,8 +121,10 @@ class Population:
             return
 
         for _ in range(self.generation_size):
-            o = self.create_random_organism()
-            self.current_generation.append(o)
+            organism = self.create_random_organism()
+            self.current_generation.append(organism)
+
+        self.current_generation = sorted(self.current_generation, key = lambda o:o.fitness)
 
     def create_random_organism(self):
         """
