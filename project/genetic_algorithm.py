@@ -3,6 +3,7 @@
 
 import numpy as np
 
+from tqdm import tqdm
 
 class Organism:
     """
@@ -40,8 +41,9 @@ class Organism:
 
         return Organism(child_chromosome, self.fitness_func, self.genome)
 
-    # def __str__(self):
-    #     return f"{''.join(self.chromosomes)}, fitness = {self.fitness}"
+    def __str__(self):
+        # this will likely change
+        return f"{''.join(self.chromosomes)}, fitness = {self.fitness}"
 
 
 class Population:
@@ -84,13 +86,11 @@ class Population:
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
-        # print(f"generation {self.current_generation_index}: {fittest_organism}")
 
         for _ in range(self.num_generations):
-            fittest_organism = self.advance_one_generation()
             self.current_generation_index += 1
-            # print(
-            #     f"generation {self.current_generation_index}: {fittest_organism}")
+            fittest_organism = self.advance_one_generation()
+            print(f" fittest organism: {fittest_organism}")
 
             if fittest_organism.fitness > self.threshold:
                 return fittest_organism
@@ -110,7 +110,7 @@ class Population:
         new_generation.extend(self.current_generation[:top_elite])
         top = self.current_generation[:int(self.generation_size*offspring_rate)]
 
-        for _ in range(top_elite, self.generation_size):
+        for _ in tqdm(range(top_elite, self.generation_size), desc=f"Generation {self.current_generation_index}"):
             p1 = rng.choice(top)
             p2 = rng.choice(top)
             child = p1.reproduce(p2)
