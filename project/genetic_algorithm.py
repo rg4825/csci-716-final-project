@@ -99,6 +99,25 @@ class Population:
         prev_fittest_organism = self.current_generation[0]
         patience_counter = 0
 
+        if self.num_generations == 0:
+            while True:
+                self.current_generation_index += 1
+                fittest_organism = self.advance_one_generation()
+                print(f" fittest organism: {fittest_organism}")
+
+                if fittest_organism == prev_fittest_organism:
+                    patience_counter += 1
+                else:
+                    patience_counter = 0
+                    prev_fittest_organism = fittest_organism
+
+                if patience_counter >= self.patience != 0:
+                    print(f"fitness has not improved in {self.patience} iterations, stopping early...")
+                    return fittest_organism
+
+                if fittest_organism.fitness > self.threshold:
+                    return fittest_organism
+
         for _ in range(self.num_generations):
             self.current_generation_index += 1
             fittest_organism = self.advance_one_generation()
@@ -110,7 +129,7 @@ class Population:
                 patience_counter = 0
                 prev_fittest_organism = fittest_organism
 
-            if patience_counter >= self.patience:
+            if patience_counter >= self.patience != 0:
                 print(f"fitness has not improved in {self.patience} iterations, stopping early...")
                 break
 
