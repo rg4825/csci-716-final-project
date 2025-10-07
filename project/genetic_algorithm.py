@@ -115,7 +115,8 @@ class Population:
                     print(f"fitness has not improved in {self.patience} iterations, stopping early...")
                     return fittest_organism
 
-                if fittest_organism.fitness > self.threshold:
+                if fittest_organism.fitness >= self.threshold:
+                    print(f"fitness >= threshold {self.threshold}, stopping...")
                     return fittest_organism
 
         for _ in range(self.num_generations):
@@ -133,7 +134,8 @@ class Population:
                 print(f"fitness has not improved in {self.patience} iterations, stopping early...")
                 break
 
-            if fittest_organism.fitness > self.threshold:
+            if fittest_organism.fitness >= self.threshold:
+                print(f"fitness >= threshold {self.threshold}, stopping...")
                 return fittest_organism
 
         return fittest_organism
