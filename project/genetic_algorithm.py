@@ -58,8 +58,9 @@ class Population:
         """
         :param generation_size:     number of organisms per generation
         :param genome:              a list of all valid genetic bases
-        :param fitness_func:        the function used to evaluate how "fit" this organism is
-        :param num_generations:     the maximum number of generations
+        :param fitness_func:        the function used to evaluate how "fit" this organism is, the greater the fitness
+                                    the better
+        :param num_generations:     the maximum number of generations, beyond initialization
         :param threshold:           if the fitness is beyond this threshold for an organism, stop evolution
         """
         self.genome = genome
@@ -79,12 +80,27 @@ class Population:
         :return:
         """
 
-    def advance_one_generation(self):
+    def advance_one_generation(self, elitism=0.1, offspring_rate=0.5):
         """
         Advances the population by one generation. Changes the state of this Population object.
-        :return:
+        Assumes that the current generation is already sorted by fitness.
+        :return:    the score of the fittest Organism from this generation
         """
-        pass
+        new_generation = []
+        rng = np.random.default_rng()
+        top_elite = int(self.generation_size*elitism)
+
+        new_generation.extend(self.current_generation[:top_elite])
+        top = self.generation_size[:int(self.generation_size*offspring_rate)]
+
+        for _ in range(top_elite, self.generation_size):
+            p1 = rng.choice(top)
+            p2 = rng.choice(top)
+            child = p1.reproduce(p2)
+            new_generation.append(child)
+
+        self.current_generation = sorted(new_generation, key = lambda o:o.fitness)  # sort the new generation by fitness
+        return self.current_generation[0].fitness
 
     def initialize_generation(self):
         """
