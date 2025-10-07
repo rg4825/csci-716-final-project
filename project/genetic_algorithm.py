@@ -46,13 +46,20 @@ class Population:
 
     def __init__(
         self,
-        population_size,
         genome,
         fitness_func,
+        generation_size=50,
         num_generations=100,
         threshold=0.01,
     ):
-        self.population_size = population_size
+        """
+        :param generation_size:     number of organisms per generation
+        :param genome:              a list of all valid genetic bases
+        :param fitness_func:        the function used to evaluate how "fit" this organism is
+        :param num_generations:     the maximum number of generations
+        :param threshold:           if the fitness is beyond this threshold for an organism, stop evolution
+        """
+        self.population_size = generation_size
         self.genome = genome
         self.fitness_func = fitness_func
         self.num_generations = num_generations
