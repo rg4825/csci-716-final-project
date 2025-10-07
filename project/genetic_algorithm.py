@@ -10,7 +10,7 @@ class Organism:
     Represents a single organism as a part of the population.
     """
 
-    def __init__(self, chromosomes, fitness_func, genome):
+    def __init__(self, chromosomes, fitness_func, genome, to_string=None):
         """
         :param chromosomes:     a list of tokens that can be considered this organism's "gene sequence"
         :param fitness_func:    the function used to evaluate how "fit" this organism is
@@ -19,6 +19,7 @@ class Organism:
         self.chromosomes = chromosomes
         self.fitness_func = fitness_func
         self.genome = genome
+        self.to_string = to_string
 
         self.fitness = self.fitness_func(self.chromosomes)
 
@@ -39,11 +40,12 @@ class Organism:
 
             child_chromosome.append(np.random.choice(self.genome))
 
-        return Organism(child_chromosome, self.fitness_func, self.genome)
+        return Organism(child_chromosome, self.fitness_func, self.genome, to_string=self.to_string)
 
     def __str__(self):
-        # this will likely change
-        return f"{''.join(self.chromosomes)}, fitness = {self.fitness}"
+        if self.to_string is None:
+            return f"{''.join(self.chromosomes)}, fitness = {self.fitness}"
+        return self.to_string(self)
 
 
 class Population:
@@ -59,6 +61,7 @@ class Population:
         generation_size=50,
         num_generations=100,
         threshold=0.90,
+        organism_to_string=None
     ):
         """
         :param generation_size:     number of organisms per generation
@@ -74,6 +77,7 @@ class Population:
         self.fitness_func = fitness_func
         self.num_generations = num_generations
         self.threshold = threshold
+        self.organism_to_string = organism_to_string
 
         self.current_generation_index = 0
         self.current_generation = []
@@ -142,4 +146,4 @@ class Population:
         for i in range(self.chromosome_len):
             chromosomes.append(rng.choice(self.genome))
 
-        return Organism(chromosomes, self.fitness_func, self.genome)
+        return Organism(chromosomes, self.fitness_func, self.genome, to_string=self.organism_to_string)
