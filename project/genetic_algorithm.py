@@ -47,6 +47,9 @@ class Organism:
             return f"{''.join(self.chromosomes)}, fitness = {self.fitness}"
         return self.to_string(self)
 
+    def __eq__(self, other):
+        return self.chromosomes == other.chromosomes
+
 
 class Population:
     """
@@ -61,6 +64,7 @@ class Population:
         generation_size=50,
         num_generations=100,
         threshold=0.90,
+        patience=5,
         organism_to_string=None
     ):
         """
@@ -77,6 +81,7 @@ class Population:
         self.fitness_func = fitness_func
         self.num_generations = num_generations
         self.threshold = threshold
+        self.patience = patience
         self.organism_to_string = organism_to_string
 
         self.current_generation_index = 0
@@ -91,10 +96,23 @@ class Population:
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
 
+        prev_fittest_organism = self.current_generation[0]
+        patience_counter = 0
+
         for _ in range(self.num_generations):
             self.current_generation_index += 1
             fittest_organism = self.advance_one_generation()
             print(f" fittest organism: {fittest_organism}")
+
+            if fittest_organism == prev_fittest_organism:
+                patience_counter += 1
+            else:
+                patience_counter = 0
+                prev_fittest_organism = fittest_organism
+
+            if patience_counter >= self.patience:
+                print(f"fitness has not improved in {self.patience} iterations, stopping early...")
+                break
 
             if fittest_organism.fitness > self.threshold:
                 return fittest_organism
