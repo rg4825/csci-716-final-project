@@ -70,9 +70,18 @@ class Population:
         self.current_generation = []
 
     def fully_evolve_population(self):
+        """
+        Given the current generation, evolve the population until either the threshold is hit or the maximum number
+        of generations is hit.
+        :return:
+        """
         pass
 
     def advance_one_generation(self):
+        """
+        Advances the population by one generation. Changes the state of this Population object.
+        :return:
+        """
         pass
 
     def create_random_organism(self):
