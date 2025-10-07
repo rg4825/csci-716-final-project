@@ -21,24 +21,27 @@ class Organism:
 
         self.fitness = self.fitness_func(self.chromosomes)
 
-    def reproduce(self, other):
+    def reproduce(self, other, inheritance=.45):
         child_chromosome = []
         rng = np.random.default_rng()
 
         for gene1, gene2 in zip(self.chromosomes, other.chromosomes):
             p = rng.random()
 
-            if p < 0.45:
+            if p < inheritance:
                 child_chromosome.append(gene1)
                 continue
 
-            elif p < 0.90:
+            elif p < inheritance*2:
                 child_chromosome.append(gene2)
                 continue
 
             child_chromosome.append(np.random.choice(self.genome))
 
         return Organism(child_chromosome, self.fitness_func, self.genome)
+
+    # def __str__(self):
+    #     return f"{''.join(self.chromosomes)}, fitness = {self.fitness}"
 
 
 class Population:
@@ -81,13 +84,13 @@ class Population:
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
-        # print(f"generation {self.current_generation_index}: {''.join(fittest_organism.chromosomes)}, fitness = {fittest_organism.fitness}")
+        # print(f"generation {self.current_generation_index}: {fittest_organism}")
 
         for _ in range(self.num_generations):
             fittest_organism = self.advance_one_generation()
             self.current_generation_index += 1
             # print(
-            #     f"generation {self.current_generation_index}: {''.join(fittest_organism.chromosomes)}, fitness = {fittest_organism.fitness}")
+            #     f"generation {self.current_generation_index}: {fittest_organism}")
 
             if fittest_organism.fitness > self.threshold:
                 return fittest_organism
@@ -113,7 +116,7 @@ class Population:
             child = p1.reproduce(p2)
             new_generation.append(child)
 
-        self.current_generation = sorted(new_generation, key = lambda o:o.fitness)  # sort the new generation by fitness
+        self.current_generation = sorted(new_generation, key = lambda o:o.fitness, reverse=True)  # sort the new generation by fitness
         return self.current_generation[0]
 
     def initialize_generation(self):
@@ -127,7 +130,7 @@ class Population:
             organism = self.create_random_organism()
             self.current_generation.append(organism)
 
-        self.current_generation = sorted(self.current_generation, key = lambda o:o.fitness)
+        self.current_generation = sorted(self.current_generation, key = lambda o:o.fitness, reverse=True)
 
     def create_random_organism(self):
         """
