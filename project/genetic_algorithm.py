@@ -81,10 +81,13 @@ class Population:
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
+        # print(f"generation {self.current_generation_index}: {''.join(fittest_organism.chromosomes)}, fitness = {fittest_organism.fitness}")
 
         for _ in range(self.num_generations):
             fittest_organism = self.advance_one_generation()
-            self.current_generation += 1
+            self.current_generation_index += 1
+            # print(
+            #     f"generation {self.current_generation_index}: {''.join(fittest_organism.chromosomes)}, fitness = {fittest_organism.fitness}")
 
             if fittest_organism.fitness > self.threshold:
                 return fittest_organism
@@ -102,7 +105,7 @@ class Population:
         top_elite = int(self.generation_size*elitism)
 
         new_generation.extend(self.current_generation[:top_elite])
-        top = self.generation_size[:int(self.generation_size*offspring_rate)]
+        top = self.current_generation[:int(self.generation_size*offspring_rate)]
 
         for _ in range(top_elite, self.generation_size):
             p1 = rng.choice(top)
