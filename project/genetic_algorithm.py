@@ -53,7 +53,7 @@ class Population:
         fitness_func,
         generation_size=50,
         num_generations=100,
-        threshold=0.01,
+        threshold=0.90,
     ):
         """
         :param generation_size:     number of organisms per generation
