@@ -3,6 +3,7 @@
 
 import numpy as np
 
+
 class Organism:
     """
     Represents a single organism as a part of the population.
@@ -23,7 +24,7 @@ class Organism:
     def reproduce(self, other):
         child_chromosome = []
         rng = np.random.default_rng()
-        for (gene1, gene2) in zip(self.chromosomes, other.chromosomes):
+        for gene1, gene2 in zip(self.chromosomes, other.chromosomes):
             p = rng.random()
 
             if p < 0.45:
