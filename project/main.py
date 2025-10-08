@@ -1,18 +1,35 @@
 # file: main.py
 # description: the main script file
-from voronoi import *
-import numpy as np
+
+def test_ga():
+    import string
+    from genetic_algorithm import Population
+
+    target = list("Hello, Computational Geometry!")
+
+    genome = list(string.ascii_letters) + list(string.digits) + list(string.punctuation) + [" "]
+    chromosome_len = len(target)
+
+    def fitness_func(chromosomes):
+        char_correct = 0
+        for target_gene, chromosome_gene in zip(target, chromosomes):
+            if target_gene == chromosome_gene:
+                char_correct += 1
+
+        fitness = char_correct / chromosome_len
+        return fitness
+
+    def to_string(organism):
+        return f"\n\tchromosomes: {''.join(organism.chromosomes)}\n\tfitness score = {organism.fitness}"
+
+    population = Population(genome, chromosome_len, fitness_func, threshold=.999, generation_size=2000,
+                            num_generations=0, organism_to_string=to_string, patience=0)
+    fittest = population.fully_evolve_population()
+    print(f"{fittest}")
+
 
 def main():
-    print("hello computational geometry!")
-    '''random_arr = []
-    for i in range(10):
-        random_arr.append(
-            (np.random.randint(low=1, high=100), 
-             np.random.randint(low=1, high=100))
-        )
-    triangulation = bowyer_watson(random_arr)
-    voronoi_from_triangulation(triangulation)'''
+    test_ga()
 
 
 if __name__ == "__main__":
