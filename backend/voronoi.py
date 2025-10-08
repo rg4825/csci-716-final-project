@@ -1,8 +1,11 @@
-# file: voronoi.py
-# description: testing implementation of creating Voronoi diagrams
+"""
+File:   voronoi.py
+Description:    implementation of the Bowyer-Watson algorithm to create a
+                Delaunay triangulation and use the circumcenters to find
+                edges of the Voronoi diagram
+"""
 
 import math
-import matplotlib.pyplot as plt # for testing
 
 class Edge:
     def __init__(self, p1, p2):
@@ -35,7 +38,6 @@ class Edge:
 
 
 class Triangle:
-    # circumcenter is a site of the Voronoi diagram
     def __init__(self, p1, p2, p3):
         self.p1 = p1
         self.p2 = p2
@@ -57,6 +59,13 @@ class Triangle:
         return hash((self.p1, self.p2, self.p3))
 
     def find_circumcenter(self):
+        """
+        Find the circumcenter of the triangle, which are used to find the
+        circumcircle for Delaunay triangulation and are the vertices of the
+        Voronoi diagram
+        Returns:
+            the circumcenter of this triangle
+        """
         #find midpoints of two lines:
         if self.circumcenter != None:
             return self.circumcenter
@@ -84,8 +93,7 @@ class Triangle:
             x = (y - b) / perp_slope1
         else:
             if perp_slope1 - perp_slope2 == 0:
-                #find better way to handle this error?
-                #might also need to handle collinear points...?
+                #TODO: figure out how to handle this error
                 print("Error: perpendicular bisectors are parallel, can't find circumcenter")
                 exit(1)
             x = ((perp_slope1 * midpoint1[0]) - midpoint1[1] - (perp_slope2 * midpoint2[0]) + midpoint2[1]) / (perp_slope1 - perp_slope2)
@@ -94,6 +102,12 @@ class Triangle:
         return self.circumcenter
         
     def find_circumcircle(self):
+        """
+        Find the circumcircle of the triangle, which is used to determine
+        which triangles belong in a Delaunay triangulation
+        Returns:
+            the circumcircle of this triangle
+        """
         center = self.find_circumcenter()
         dist = math.sqrt(
             math.pow(center[0] - self.p1[0], 2) + 
@@ -109,6 +123,13 @@ class Circle:
     
 
 def find_supertriangle(points):
+    """
+    Finds a supertriangle that surrounds the set of points provided
+    Arguments:
+        points: list of tuples representing x, y coordinates
+    Returns:
+        a triangle object representing the supertriangle
+    """
     min_x = min(p[0] for p in points)
     max_x = max(p[0] for p in points)
     min_y = min(p[1] for p in points)
@@ -126,6 +147,15 @@ def find_supertriangle(points):
 
 
 def bowyer_watson(points):
+    """
+    Finds the Delaunay triangulation for a given set of points using the
+    Bowyer-Watson algorithm
+    Arguments:
+        points: a list of tuples representing x, y coordinates
+    Returns:
+        triangulation: a list of triangles that form the 
+                       Delaunay triangulation
+    """
     supertriangle = find_supertriangle(points)
     triangulation = [supertriangle]
     for point in points:
@@ -168,55 +198,18 @@ def bowyer_watson(points):
     return triangulation
 
 
-def voronoi_from_triangulation(triangulation):
+def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
+    """
+    Given the Delaunay triangulation of a set of points,
+    Arguments:
+        triangulation: a list of triangles that form the 
+                       Delaunay triangulation
+        min_x: minimum x coordinate the "infinite edges" can extend out to
+        min_y: minimum y coordinate the "infinite edges" can extend out to
+        max_x: maximum x coordinate the "infinite edges" can extend out to
+        max_y: maximum y coordinate the "infinite edges" can extend out to
+    Returns:
+        JSON object representing a Voronoi diagram
+    """
+
     pass
-    #for triangle in triangulation
-        #for edge in triangle
-            #if edge in another triangle
-                #create an edge from circumcenters of the triangles
-            #else
-                #edge extends toward infinity in the direction perpendicular from the edge
-    #make edge class that can also hold slope to handle extending out to infinity??
-    #could also add custom comparator
-    '''figure, axes = plt.subplots()
-    plt.title('Delaunay Triangles & Voronoi Diagram')
-    circumcenters_x = []
-    circumcenters_y = []
-    for t in triangulation:
-        plt.plot([t.p1[0], t.p2[0]], [t.p1[1], t.p2[1]], c='b')
-        plt.plot([t.p1[0], t.p3[0]], [t.p1[1], t.p3[1]], c='b')
-        plt.plot([t.p2[0], t.p3[0]], [t.p2[1], t.p3[1]], c='b')
-        circumcenters_x.append(t.find_circumcenter()[0])
-        circumcenters_y.append(t.find_circumcenter()[1])
-    plt.scatter(circumcenters_x, circumcenters_y, c='r')
-
-    current_xlim = plt.xlim()
-    current_ylim = plt.ylim()
-
-    for t1 in triangulation:
-        c1 = t1.find_circumcenter()
-        for edge in t1.edges:
-            edge_found = False
-            for t2 in triangulation:
-                if t1 == t2:
-                    continue
-                if edge in t2.edges:
-                    c2 = t2.find_circumcenter()
-                    plt.plot([c1[0], c2[0]], 
-                             [c1[1], c2[1]], 
-                             c='r', ls='--')
-                    edge_found = True
-                    
-            if not edge_found:
-                perp_slope = edge.perp_slope
-                midpt = edge.midpoint
-                #find direction to edge from midpt, steps:
-                #treat find unit vector to find direction?
-                #find distance from midpt to c1
-                #extend to boundary using line formula
-
-    plt.xlim((0, current_xlim[1]))
-    plt.ylim((0, current_ylim[1]))
-
-    plt.savefig('test.png')
-    #plt.show()'''
