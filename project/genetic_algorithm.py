@@ -24,6 +24,12 @@ class Organism:
         self.fitness = self.fitness_func(self.chromosomes)
 
     def reproduce(self, other, inheritance=.45):
+        """
+        TODO have this implement the roulette wheel method
+        :param other:
+        :param inheritance:
+        :return:
+        """
         child_chromosome = []
         rng = np.random.default_rng()
 
@@ -68,12 +74,17 @@ class Population:
         organism_to_string=None
     ):
         """
-        :param generation_size:     number of organisms per generation
         :param genome:              a list of all valid genetic bases
+        :param chromosome_len:      the length of the target chromosome
         :param fitness_func:        the function used to evaluate how "fit" this organism is, the greater the fitness
                                     the better
-        :param num_generations:     the maximum number of generations, beyond initialization
-        :param threshold:           if the fitness is beyond this threshold for an organism, stop evolution
+        :param generation_size:     (opt.) number of organisms per generation, default 500
+        :param num_generations:     (opt.) the maximum number of generations, beyond initialization, default 200
+        :param threshold:           (opt.) if the fitness is beyond this threshold for an organism, stop evolution
+        :param patience:            (opt.) the number of generations that need to pass w/o improvement for the
+                                    algorithm to stop
+        :param organism_to_string:  (opt.) function that should be used by the Organism object as its __str__() method,
+                                    default None
         """
         self.genome = genome
         self.chromosome_len = chromosome_len
