@@ -2,8 +2,9 @@
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
-//const versor = require("versor");
+import { geoVoronoi } from "d3-geo-voronoi"; // TODO- Replace with file reading
 
+/** Home component */
 export default function Home() {
   const mapRef = useRef(null);
 
@@ -20,6 +21,7 @@ export default function Home() {
 
 /** Renders an interactive orthographic world map inside a container element */
 function renderMap(container) {
+  console.log("Rendering map...");
   const width = 960;
   const height = 960;
 
@@ -34,8 +36,7 @@ function renderMap(container) {
     .attr("height", height);
 
   // Define projection and path
-  const projection = d3
-    .geoOrthographic()
+  const projection = d3.geoOrthographic()
     .scale(450)
     .translate([width / 2, height / 2])
     .clipAngle(90);
@@ -70,6 +71,9 @@ function renderMap(container) {
     }
   );
 
+  // Draw Airport points from airports data 
+
+
   // Draw outline
   const outline = svg
     .append("path")
@@ -79,15 +83,24 @@ function renderMap(container) {
     .attr("stroke-width", 1)
     .attr("d", path);
 
-
   // Enable zoom & rotation 
-  // (Zoom uses the pointer events, so )
-  const move = d3
+  mapInteraction(svg, projection, path, graticulePath, outline);
+
+  // Initial render
+  refresh(svg, path, graticulePath, outline);
+}
+
+// Map interaction function
+function mapInteraction(svg, projection, path, graticulePath, outline) {
+  const minZoom = 200;
+  const maxZoom = 1200;
+
+  const zoom = d3
     .zoom()
-    .scaleExtent([200, 1200])
+    .scaleExtent([minZoom, maxZoom])
     .on("zoom", (event) => {
       // Zoom (prevent shrinkage at start)
-      if (event.transform.k > 200 && event.transform.k < 1200) {
+      if (event.transform.k > minZoom && event.transform.k < maxZoom) {
         projection.scale(event.transform.k);
       }
 
@@ -101,15 +114,16 @@ function renderMap(container) {
         ]);
       }
 
-      refresh();
+      refresh(svg, path, graticulePath, outline);
     });
 
-  svg.call(move);
+  svg.call(zoom);
+}
 
-  // Redraw map elements
-  function refresh() {
-    svg.selectAll(".country").attr("d", path);
-    graticulePath.attr("d", path);
-    outline.attr("d", path);
-  }
+
+// Redraw map elements
+function refresh(svg, path, graticulePath, outline) {
+  svg.selectAll(".country").attr("d", path);
+  graticulePath.attr("d", path);
+  outline.attr("d", path);
 }
