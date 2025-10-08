@@ -178,7 +178,7 @@ def voronoi_from_triangulation(triangulation):
                 #edge extends toward infinity in the direction perpendicular from the edge
     #make edge class that can also hold slope to handle extending out to infinity??
     #could also add custom comparator
-    figure, axes = plt.subplots()
+    '''figure, axes = plt.subplots()
     plt.title('Delaunay Triangles & Voronoi Diagram')
     circumcenters_x = []
     circumcenters_y = []
@@ -186,14 +186,6 @@ def voronoi_from_triangulation(triangulation):
         plt.plot([t.p1[0], t.p2[0]], [t.p1[1], t.p2[1]], c='b')
         plt.plot([t.p1[0], t.p3[0]], [t.p1[1], t.p3[1]], c='b')
         plt.plot([t.p2[0], t.p3[0]], [t.p2[1], t.p3[1]], c='b')
-        '''circumcircle = t.find_circumcircle()
-        circumcenters_x.append(circumcircle.center[0])
-        circumcenters_y.append(circumcircle.center[1])
-        axes.add_artist(
-            plt.Circle((circumcircle.center[0], circumcircle.center[1]), 
-                       circumcircle.radius, 
-                       fill=False)
-        )'''
         circumcenters_x.append(t.find_circumcenter()[0])
         circumcenters_y.append(t.find_circumcenter()[1])
     plt.scatter(circumcenters_x, circumcenters_y, c='r')
@@ -216,7 +208,6 @@ def voronoi_from_triangulation(triangulation):
                     edge_found = True
                     
             if not edge_found:
-                #TODO: 
                 perp_slope = edge.perp_slope
                 midpt = edge.midpoint
                 #find direction to edge from midpt, steps:
@@ -228,4 +219,4 @@ def voronoi_from_triangulation(triangulation):
     plt.ylim((0, current_ylim[1]))
 
     plt.savefig('test.png')
-    #plt.show()
+    #plt.show()'''
