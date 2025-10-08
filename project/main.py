@@ -20,9 +20,9 @@ def test_ga():
         return fitness
 
     def to_string(organism):
-        return f"{''.join(organism.chromosomes)}, fitness score = {organism.fitness}"
+        return f"\n\tchromosomes: {''.join(organism.chromosomes)}\n\tfitness score = {organism.fitness}"
 
-    population = Population(genome, chromosome_len, fitness_func, threshold=.95, generation_size=1000,
+    population = Population(genome, chromosome_len, fitness_func, threshold=.999, generation_size=2000,
                             num_generations=0, organism_to_string=to_string, patience=0)
     fittest = population.fully_evolve_population()
     print(f"{fittest}")

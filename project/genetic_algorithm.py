@@ -103,7 +103,7 @@ class Population:
             while True:
                 self.current_generation_index += 1
                 fittest_organism = self.advance_one_generation()
-                print(f" fittest organism: {fittest_organism}")
+                print(f"fittest organism: {fittest_organism}")
 
                 if fittest_organism == prev_fittest_organism:
                     patience_counter += 1
@@ -122,7 +122,7 @@ class Population:
         for _ in range(self.num_generations):
             self.current_generation_index += 1
             fittest_organism = self.advance_one_generation()
-            print(f" fittest organism: {fittest_organism}")
+            print(f"fittest organism: {fittest_organism}")
 
             if fittest_organism == prev_fittest_organism:
                 patience_counter += 1
