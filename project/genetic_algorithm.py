@@ -61,10 +61,10 @@ class Population:
         genome,
         chromosome_len,
         fitness_func,
-        generation_size=50,
-        num_generations=100,
-        threshold=0.90,
-        patience=5,
+        generation_size=500,
+        num_generations=200,
+        threshold=0.999,
+        patience=0,
         organism_to_string=None
     ):
         """
