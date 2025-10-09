@@ -24,7 +24,7 @@ export default function Home() {
 }
 
 /** --- Generalized map renderer --- **/
-function renderMap(container, type = "globe") {
+async function renderMap(container, type = "globe") {
   // --- Setup ---
   const width = container.clientWidth;
   const height = container.clientHeight;
@@ -61,11 +61,80 @@ function renderMap(container, type = "globe") {
       .attr("d", path);
   }
 
+  // --- Voronoi cells (optional) ---
+  // Draw seeds for each airport (only if type = large_airport)
+  const airports = await d3.csv("/data/airports.csv", d => {
+    if (d.type !== "large_airport") return null;
+    return {
+      name: d.name,
+      lat: +d.latitude_deg,
+      lon: +d.longitude_deg
+    };
+  });
+
+  svg
+    .append("g")
+    .selectAll("circle")
+    .data(airports)
+    .enter()
+    .append("circle")
+    .attr("cx", d => projection([d.lon, d.lat])[0])
+    .attr("cy", d => projection([d.lon, d.lat])[1])
+    .attr("r", 2)
+    .attr("fill", "red")
+    .attr("opacity", 0.8)
+    .append("title")
+    .text(d => d.name);
+
+  // Filter out airports on the far side
+  if (type === "globe") {
+    filter_far_side(svg, projection);
+  }
+
+  /*
+  d3.csv("../public/data/airports.csv").then(airports => {
+    const seeds = airports.map(airport => {
+      const [longitude_deg, latitude_deg] = airport.geometry.coordinates;
+      return projection([longitude_deg, latitude_deg]);
+    });
+    svg.append("g")
+      .attr("class", styles.seedsGroup)
+      .selectAll("circle")
+      .data(seeds)
+      .enter()
+      .append("circle")
+      .attr("class", styles.seed)
+      .attr("cx", d => d[0])
+      .attr("cy", d => d[1])
+      .attr("r", 2);
+  });
+
+  // Draw Voronoi cells
+  const voronoi = geoVoronoi(seeds);
+  svg.append("g")
+    .attr("class", styles.voronoiGroup)
+    .selectAll("path")
+    .data(voronoi.polygons())
+    .enter()
+    .append("path")
+    .attr("class", styles.voronoiCell)
+    .attr("d", d3.geoPath());
+});
+*/
+
   // --- Interaction ---
   addInteraction(svg, projection, path, width, height, type);
 
   // --- Initial draw ---
   refresh(svg, path);
+}
+
+function filter_far_side(svg, projection) {
+  svg.selectAll("circle")
+    .attr("display", d => {
+      const gdistance = d3.geoDistance([-projection.rotate()[0], -projection.rotate()[1]], [d.lon, d.lat]);
+      return gdistance < Math.PI / 2 ? null : "none";
+    });
 }
 
 
@@ -100,11 +169,14 @@ function addInteraction(svg, projection, path, width, height, type) {
       if (event.sourceEvent) {
         if (type === "globe") {
           const rotate = projection.rotate();
-          const sensitivity = 0.25;
+          const sensitivity = 1 / (k / 100); // Sensitivity decreases as zoom increases
           projection.rotate([
             rotate[0] + (event.sourceEvent.movementX || 0) * sensitivity,
             rotate[1] - (event.sourceEvent.movementY || 0) * sensitivity,
           ]);
+          // Filter out airports on the far side
+          filter_far_side(svg, projection);
+
         } else if (type === "flat") {
           const translate = projection.translate();
           const translateX = translate[0] + (event.sourceEvent.movementX || 0);
@@ -127,4 +199,7 @@ function refresh(svg, path) {
   svg.selectAll(`.${styles.country}`).attr("d", path);
   svg.selectAll(`.${styles.graticule}`).attr("d", path);
   svg.selectAll(`.${styles.outline}`).attr("d", path);
+  svg.selectAll("circle")
+    .attr("cx", d => path.projection()([d.lon, d.lat])[0])
+    .attr("cy", d => path.projection()([d.lon, d.lat])[1]);
 }
