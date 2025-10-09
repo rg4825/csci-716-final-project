@@ -86,9 +86,12 @@ class Population:
                                     the better
         :param generation_size:     (opt.) number of organisms per generation, default 500
         :param num_generations:     (opt.) the maximum number of generations, beyond initialization, default 200
-        :param threshold:           (opt.) if the fitness is beyond this threshold for an organism, stop evolution
+        :param threshold:           (opt.) if the fitness is beyond this threshold for an organism, stop evolution,
+                                    default .999 (in essence meaning that the algo will not stop based on threshold
+                                    until near perfect)
         :param patience:            (opt.) the number of generations that need to pass w/o improvement for the
-                                    algorithm to stop
+                                    algorithm to stop, default is sentinel value 0 corresponding to patience being
+                                    turned off
         :param organism_to_string:  (opt.) function that should be used by the Organism object as its __str__() method,
                                     default None
         """
