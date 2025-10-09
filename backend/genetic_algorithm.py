@@ -7,7 +7,8 @@ from tqdm import tqdm
 
 class Organism:
     """
-    Represents a single organism as a part of the population.
+    Represents a single organism as a part of the population. Meant to used with the roulette wheel method
+    for selecting the next generation.
     """
 
     def __init__(self, chromosomes, fitness_func, genome, to_string=None):
@@ -60,7 +61,8 @@ class Organism:
 
 class Population:
     """
-    Represents a group of individuals, on which to simulate evolution on.
+    Represents a group of individuals, on which to simulate evolution on. Uses the roulette wheel method for
+    creating the next generation.
     """
 
     def __init__(
