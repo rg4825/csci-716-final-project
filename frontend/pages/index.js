@@ -78,11 +78,9 @@ async function renderMap(container, type = "globe") {
     .data(airports)
     .enter()
     .append("circle")
+    .attr("class", styles.airport)
     .attr("cx", d => projection([d.lon, d.lat])[0])
     .attr("cy", d => projection([d.lon, d.lat])[1])
-    .attr("r", 2)
-    .attr("fill", "red")
-    .attr("opacity", 0.8)
     .append("title")
     .text(d => d.name);
 
@@ -91,36 +89,17 @@ async function renderMap(container, type = "globe") {
     filter_far_side(svg, projection);
   }
 
-  /*
-  d3.csv("../public/data/airports.csv").then(airports => {
-    const seeds = airports.map(airport => {
-      const [longitude_deg, latitude_deg] = airport.geometry.coordinates;
-      return projection([longitude_deg, latitude_deg]);
-    });
-    svg.append("g")
-      .attr("class", styles.seedsGroup)
-      .selectAll("circle")
-      .data(seeds)
-      .enter()
-      .append("circle")
-      .attr("class", styles.seed)
-      .attr("cx", d => d[0])
-      .attr("cy", d => d[1])
-      .attr("r", 2);
-  });
-
   // Draw Voronoi cells
+  const seeds = airports.map(airport => [airport.lon, airport.lat]);
   const voronoi = geoVoronoi(seeds);
   svg.append("g")
     .attr("class", styles.voronoiGroup)
     .selectAll("path")
-    .data(voronoi.polygons())
+    .data(voronoi.polygons().features)
     .enter()
-    .append("path")
-    .attr("class", styles.voronoiCell)
-    .attr("d", d3.geoPath());
-});
-*/
+    .append('path')
+    .attr('d', path)
+    .attr('class', styles.voronoiCell);
 
   // --- Interaction ---
   addInteraction(svg, projection, path, width, height, type);
@@ -202,4 +181,5 @@ function refresh(svg, path) {
   svg.selectAll("circle")
     .attr("cx", d => path.projection()([d.lon, d.lat])[0])
     .attr("cy", d => path.projection()([d.lon, d.lat])[1]);
+  svg.selectAll(`.${styles.voronoiCell}`).attr("d", path);
 }
