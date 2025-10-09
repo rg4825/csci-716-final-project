@@ -5,6 +5,7 @@ import numpy as np
 
 from tqdm import tqdm
 
+
 class Organism:
     """
     Represents a single organism as a part of the population. Meant to used with the roulette wheel method
@@ -24,7 +25,7 @@ class Organism:
 
         self.fitness = self.fitness_func(self.chromosomes)
 
-    def reproduce(self, other, crossover=.80):
+    def reproduce(self, other, crossover=0.80):
         """
         Creates a new organism using the chromosomes of each parent, with a chance of mutation equal to
         1-crossover.
@@ -38,7 +39,7 @@ class Organism:
         for gene1, gene2 in zip(self.chromosomes, other.chromosomes):
             p = rng.random()
 
-            if p < crossover/2:
+            if p < crossover / 2:
                 child_chromosome.append(gene1)
                 continue
 
@@ -48,7 +49,9 @@ class Organism:
 
             child_chromosome.append(np.random.choice(self.genome))
 
-        return Organism(child_chromosome, self.fitness_func, self.genome, to_string=self.to_string)
+        return Organism(
+            child_chromosome, self.fitness_func, self.genome, to_string=self.to_string
+        )
 
     def __str__(self):
         if self.to_string is None:
@@ -74,7 +77,7 @@ class Population:
         num_generations=200,
         threshold=0.999,
         patience=0,
-        organism_to_string=None
+        organism_to_string=None,
     ):
         """
         :param genome:              a list of all valid genetic bases
@@ -126,7 +129,9 @@ class Population:
                     prev_fittest_organism = fittest_organism
 
                 if patience_counter >= self.patience != 0:
-                    print(f"fitness has not improved in {self.patience} iterations, stopping early...")
+                    print(
+                        f"fitness has not improved in {self.patience} iterations, stopping early..."
+                    )
                     return fittest_organism
 
                 if fittest_organism.fitness >= self.threshold:
@@ -145,7 +150,9 @@ class Population:
                 prev_fittest_organism = fittest_organism
 
             if patience_counter >= self.patience != 0:
-                print(f"fitness has not improved in {self.patience} iterations, stopping early...")
+                print(
+                    f"fitness has not improved in {self.patience} iterations, stopping early..."
+                )
                 break
 
             if fittest_organism.fitness >= self.threshold:
@@ -164,15 +171,20 @@ class Population:
         rng = np.random.default_rng()
 
         total_fitness = sum([o.fitness for o in self.current_generation])
-        probs = [o.fitness/total_fitness for o in self.current_generation]
+        probs = [o.fitness / total_fitness for o in self.current_generation]
 
-        for _ in tqdm(range(self.generation_size), desc=f"Generation {self.current_generation_index}"):
+        for _ in tqdm(
+            range(self.generation_size),
+            desc=f"Generation {self.current_generation_index}",
+        ):
             p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
             p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
             child = p1.reproduce(p2)
             new_generation.append(child)
 
-        self.current_generation = sorted(new_generation, key = lambda o:o.fitness, reverse=True)  # sort the new generation by fitness
+        self.current_generation = sorted(
+            new_generation, key=lambda o: o.fitness, reverse=True
+        )  # sort the new generation by fitness
         return self.current_generation[0]
 
     def initialize_generation(self):
@@ -186,7 +198,9 @@ class Population:
             organism = self.create_random_organism()
             self.current_generation.append(organism)
 
-        self.current_generation = sorted(self.current_generation, key = lambda o:o.fitness, reverse=True)
+        self.current_generation = sorted(
+            self.current_generation, key=lambda o: o.fitness, reverse=True
+        )
 
     def create_random_organism(self):
         """
@@ -198,4 +212,9 @@ class Population:
         for i in range(self.chromosome_len):
             chromosomes.append(rng.choice(self.genome))
 
-        return Organism(chromosomes, self.fitness_func, self.genome, to_string=self.organism_to_string)
+        return Organism(
+            chromosomes,
+            self.fitness_func,
+            self.genome,
+            to_string=self.organism_to_string,
+        )
