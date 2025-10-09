@@ -220,3 +220,6 @@ def voronoi_from_triangulation(triangulation):
 
     plt.savefig('test.png')
     #plt.show()'''
+
+
+bowyer_watson([(2, 3), (5, 7), (9, 6), (4, 2), (8, 1), (7, 4), (3, 5), (6, 5)])
