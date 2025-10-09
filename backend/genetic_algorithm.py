@@ -23,12 +23,13 @@ class Organism:
 
         self.fitness = self.fitness_func(self.chromosomes)
 
-    def reproduce(self, other, inheritance=.45):
+    def reproduce(self, other, crossover=.80):
         """
-        TODO have this implement the roulette wheel method
-        :param other:
-        :param inheritance:
-        :return:
+        Creates a new organism using the chromosomes of each parent, with a chance of mutation equal to
+        1-crossover.
+        :param other:       the other organism for genes to passed on
+        :param crossover:   the chance of a gene to be taken from a parent
+        :return:            a new organism inheriting traits from both parents
         """
         child_chromosome = []
         rng = np.random.default_rng()
@@ -36,11 +37,11 @@ class Organism:
         for gene1, gene2 in zip(self.chromosomes, other.chromosomes):
             p = rng.random()
 
-            if p < inheritance:
+            if p < crossover/2:
                 child_chromosome.append(gene1)
                 continue
 
-            elif p < inheritance*2:
+            elif p < crossover:
                 child_chromosome.append(gene2)
                 continue
 
@@ -153,8 +154,8 @@ class Population:
 
     def advance_one_generation(self, elitism=0.1, offspring_rate=0.5):
         """
-        Advances the population by one generation. Changes the state of this Population object.
-        Assumes that the current generation is already sorted by fitness.
+        Advances the population by one generation using the roulette wheel method. Changes the state of this
+        Population object. Assumes that the current generation is already sorted by fitness.
         :return:    the fittest Organism from this generation
         """
         new_generation = []
