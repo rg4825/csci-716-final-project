@@ -152,7 +152,7 @@ class Population:
 
         return fittest_organism
 
-    def advance_one_generation(self, elitism=0.1, offspring_rate=0.5):
+    def advance_one_generation(self):
         """
         Advances the population by one generation using the roulette wheel method. Changes the state of this
         Population object. Assumes that the current generation is already sorted by fitness.
@@ -160,14 +160,13 @@ class Population:
         """
         new_generation = []
         rng = np.random.default_rng()
-        top_elite = int(self.generation_size*elitism)
 
-        new_generation.extend(self.current_generation[:top_elite])
-        top = self.current_generation[:int(self.generation_size*offspring_rate)]
+        total_fitness = sum([o.fitness for o in self.current_generation])
+        probs = [o.fitness/total_fitness for o in self.current_generation]
 
-        for _ in tqdm(range(top_elite, self.generation_size), desc=f"Generation {self.current_generation_index}"):
-            p1 = rng.choice(top)
-            p2 = rng.choice(top)
+        for _ in tqdm(range(self.generation_size), desc=f"Generation {self.current_generation_index}"):
+            p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
+            p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
             child = p1.reproduce(p2)
             new_generation.append(child)
 
