@@ -111,7 +111,7 @@ class Population:
         """
         Given the current generation, evolve the population until either the threshold is hit or the maximum number
         of generations is hit.
-        :return:
+        :return:    the most fit organism from evolving this papulation.
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
@@ -193,6 +193,7 @@ class Population:
     def initialize_generation(self):
         """
         Updates self.current_generation if it's currently empty with self.generation_size number of organisms.
+        :return:    None
         """
         if self.current_generation:
             return
