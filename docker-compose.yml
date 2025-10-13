@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     working_dir: /app/backend/
     container_name: backend
+    env_file:
+      - .env.local  # this needs to be created by the user
     volumes:
       - ./backend/:/app/backend/
 
