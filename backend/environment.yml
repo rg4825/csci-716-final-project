@@ -11,3 +11,5 @@ dependencies:
   - loguru
   - tqdm
   - requests
+  - pip:
+      - -e /app/opensky-api/python

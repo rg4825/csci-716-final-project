@@ -1,6 +1,7 @@
 # file:         main.py
 # description:  the main script file
 
+from open_sky import test_api
 
 def test_ga():
     import string
@@ -43,7 +44,7 @@ def test_ga():
 
 
 def main():
-    test_ga()
+    test_api()
 
 
 if __name__ == "__main__":
