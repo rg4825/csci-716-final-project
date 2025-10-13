@@ -214,6 +214,8 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
         JSON object representing a Voronoi diagram
     """
     voronoi_edges = []
+    ch_circumcenters = {}
+    ch_vertices = []
     for tri1 in triangulation:
         c1 = tri1.find_circumcenter()
         for edge in tri1.edges:
@@ -237,61 +239,59 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
 
                 if edge.perp_slope is None:
                     # check whether c1 is above or below other vertex
-                    if c1[1] < vertex[1]:
+                    if edge.midpoint[1] < vertex[1]:
                         # draw line down
                         voronoi_edges.append(Edge(c1, (c1[0], min_y)))
                     else:
                         # draw line up
                         voronoi_edges.append(Edge(c1, (c1[0], max_y)))
-                    continue
                 elif edge.perp_slope == 0:
                     # check whether c1 is to the left or right of other vertex
-                    if c1[0] < vertex[0]:
+                    if edge.midpoint[0] < vertex[0]:
                         # draw line left
                         voronoi_edges.append(Edge(c1, (min_x, c1[1])))
                     else:
                         # draw line right
                         voronoi_edges.append(Edge(c1, (max_x, c1[1])))
-                    continue
-                
-                # b in y = mx + b for first of other_edges
-                b1 = other_edges[0].p1[1] - (other_edges[0].slope * other_edges[0].p1[0])
-                # plug y coordinate of c1 into equation 1
-                x1 = (c1[1] - b1) / other_edges[0].slope
-                # plug x coordinate of c1 into equation 1
-                y1 = (other_edges[0].slope * c1[0]) + b1
-
-                # b in y = mx + b for second of other_edges
-                b2 = other_edges[1].p1[1] - (other_edges[1].slope * other_edges[1].p1[0])
-                # plug y coordinate of c1 into equation 2
-                x2 = (c1[1] - b2) / other_edges[1].slope
-                # plug x coordinate of c1 into equation 2
-                y2 = (other_edges[1].slope * c1[0]) + b2
-
-                # TODO: add checks for if other coord outside min/max x/y range?
-                if x1 > c1[0] and x2 > c1[0]:   # left
-                    x = min_x
-                    b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                    y = (edge.perp_slope * x) + b
-                    voronoi_edges.append(Edge(c1, (x, y)))
-                elif x1 < c1[0] and x2 < c1[0]: # right
-                    x = max_x
-                    b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                    y = (edge.perp_slope * x) + b
-                    voronoi_edges.append(Edge(c1, (x, y)))
-                elif y1 > c1[1] and y2 > c1[1]: # below
-                    y = min_y
-                    b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                    x = (y - b) / edge.perp_slope
-                    voronoi_edges.append(Edge(c1, (x, y)))
-                elif y2 < c1[1] and y2 < c1[1]: # above
-                    y = max_y
-                    b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                    x = (y - b) / edge.perp_slope
-                    voronoi_edges.append(Edge(c1, (x, y)))
                 else:
-                    # TODO: check, can this case even happen?
-                    pass
+                    ch_circumcenters[c1] = edge
+
+    for edge in ch_circumcenters.values():
+        ch_vertices.append(edge.p1)
+        ch_vertices.append(edge.p2)
+
+    ch_vertices = list(set(ch_vertices)) # remove duplicates
+    if len(ch_vertices) > 0:
+        x_mid = (min([point[0] for point in ch_vertices]) + max([point[0] for point in ch_vertices])) / 2.0
+        y_mid = (min([point[1] for point in ch_vertices]) + max([point[1] for point in ch_vertices])) / 2.0
+    
+    for c, edge in ch_circumcenters.items():
+        if abs(edge.slope) < 1: # treat as horizontal
+            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
+            y = (edge.slope * x_mid) + b
+            if y < y_mid: # draw line down
+                y = min_y
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                x = (y - b) / edge.perp_slope
+                voronoi_edges.append(Edge(c, (x, y)))
+            else:   # draw line up
+                y = max_y
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                x = (y - b) / edge.perp_slope
+                voronoi_edges.append(Edge(c, (x, y)))
+        else:   # treat as vertical
+            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
+            x = (y_mid - b) / edge.slope
+            if x < x_mid:   # draw line left
+                x = min_x
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                y = (edge.perp_slope * x) + b
+                voronoi_edges.append(Edge(c, (x, y)))
+            else:   # draw line right
+                x = max_x
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                y = (edge.perp_slope * x) + b
+                voronoi_edges.append(Edge(c, (x, y)))
                 
     #convert edges to dicts of p1, p2
     edge_dicts = []
