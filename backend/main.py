@@ -1,5 +1,5 @@
-# file: main.py
-# description: the main script file
+# file:         main.py
+# description:  the main script file
 
 def test_ga():
     import string
