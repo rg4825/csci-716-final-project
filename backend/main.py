@@ -1,13 +1,19 @@
 # file: main.py
 # description: the main script file
 
+
 def test_ga():
     import string
     from genetic_algorithm import Population
 
     target = list("Hello, Computational Geometry!")
 
-    genome = list(string.ascii_letters) + list(string.digits) + list(string.punctuation) + [" "]
+    genome = (
+        list(string.ascii_letters)
+        + list(string.digits)
+        + list(string.punctuation)
+        + [" "]
+    )
     chromosome_len = len(target)
 
     def fitness_func(chromosomes):
@@ -22,8 +28,16 @@ def test_ga():
     def to_string(organism):
         return f"\n\tchromosomes: {''.join(organism.chromosomes)}\n\tfitness score = {organism.fitness}"
 
-    population = Population(genome, chromosome_len, fitness_func, threshold=.999, generation_size=2000,
-                            num_generations=0, organism_to_string=to_string, patience=0)
+    population = Population(
+        genome,
+        chromosome_len,
+        fitness_func,
+        threshold=0.999,
+        generation_size=2000,
+        num_generations=0,
+        organism_to_string=to_string,
+        patience=0,
+    )
     fittest = population.fully_evolve_population()
     print(f"{fittest}")
 
