@@ -5,6 +5,8 @@ services:
       dockerfile: backend/Dockerfile
     working_dir: /app/backend/
     container_name: backend
+    ports:
+      - "8888:8080"
     env_file:
       - .env.local
     volumes:
