@@ -4,126 +4,183 @@ import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import { geoVoronoi } from "d3-geo-voronoi"; // TODO- Replace with file reading
 
-/** Home component */
+import styles from "../styles/Home.module.css";
+
 export default function Home() {
+  const globeRef = useRef(null);
   const mapRef = useRef(null);
 
   useEffect(() => {
-    if (mapRef.current) renderMap(mapRef.current);
+    if (globeRef.current) renderMap(globeRef.current, "globe");
+    if (mapRef.current) renderMap(mapRef.current, "flat");
   }, []);
 
   return (
-    <main className="flex flex-col justify-center items-center min-h-screen bg-gray-100">
+    <main className={styles.container}>
+      <div ref={globeRef} />
       <div ref={mapRef} />
     </main>
   );
 }
 
-/** Renders an interactive orthographic world map inside a container element */
-function renderMap(container) {
-  console.log("Rendering map...");
-  const width = 960;
-  const height = 960;
-
-  // Clear previous map
+/** --- Generalized map renderer --- **/
+async function renderMap(container, type = "globe") {
+  // --- Setup ---
+  const width = container.clientWidth;
+  const height = container.clientHeight;
   d3.select(container).selectAll("*").remove();
 
-  // Create SVG
-  const svg = d3
-    .select(container)
-    .append("svg")
-    .attr("width", width)
-    .attr("height", height);
-
-  // Define projection and path
-  const projection = d3.geoOrthographic()
-    .scale(450)
-    .translate([width / 2, height / 2])
-    .clipAngle(90);
-
+  const svg = d3.select(container).append("svg");
+  const projection = createProjection(type, width, height);
   const path = d3.geoPath(projection);
   const graticule = d3.geoGraticule();
 
-  // Draw graticule (latitude/longitude lines)
-  const graticulePath = svg
-    .append("path")
+  // --- Draw base map ---
+  svg.append("path")
     .datum(graticule())
-    .attr("fill", "none")
-    .attr("stroke", "#999")
-    .attr("stroke-width", 0.5)
+    .attr("class", styles.graticule)
     .attr("d", path);
 
-  // Draw countries
-  const gCountries = svg.append("g");
+  const gCountries = svg.append("g").attr("class", styles.countriesGroup);
 
-  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(
-    (world) => {
-      const countries = topojson.feature(world, world.objects.countries).features;
-      gCountries
-        .selectAll(".country")
-        .data(countries)
-        .enter()
-        .append("path")
-        .attr("class", "country")
-        .attr("fill", "#ccc")
-        .attr("stroke", "#fff")
-        .attr("d", path);
-    }
-  );
+  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(world => {
+    const countries = topojson.feature(world, world.objects.countries).features;
+    gCountries.selectAll("path")
+      .data(countries)
+      .enter()
+      .append("path")
+      .attr("class", styles.country)
+      .attr("d", path);
+  });
 
-  // Draw Airport points from airports data 
+  // --- Sphere outline (only for globe) ---
+  if (type === "globe") {
+    svg.append("path")
+      .datum({ type: "Sphere" })
+      .attr("class", styles.outline)
+      .attr("d", path);
+  }
 
+  // --- Voronoi cells (optional) ---
+  // Draw seeds for each airport (only if type = large_airport)
+  const airports = await d3.csv("/data/airports.csv", d => {
+    if (d.type !== "large_airport") return null;
+    return {
+      name: d.name,
+      lat: +d.latitude_deg,
+      lon: +d.longitude_deg
+    };
+  });
 
-  // Draw outline
-  const outline = svg
-    .append("path")
-    .datum({ type: "Sphere" })
-    .attr("stroke", "#000")
-    .attr("fill", "none")
-    .attr("stroke-width", 1)
-    .attr("d", path);
+  svg
+    .append("g")
+    .selectAll("circle")
+    .data(airports)
+    .enter()
+    .append("circle")
+    .attr("class", styles.airport)
+    .attr("cx", d => projection([d.lon, d.lat])[0])
+    .attr("cy", d => projection([d.lon, d.lat])[1])
+    .append("title")
+    .text(d => d.name);
 
-  // Enable zoom & rotation 
-  mapInteraction(svg, projection, path, graticulePath, outline);
+  // Filter out airports on the far side
+  if (type === "globe") {
+    filter_far_side(svg, projection);
+  }
 
-  // Initial render
-  refresh(svg, path, graticulePath, outline);
+  // Draw Voronoi cells
+  const seeds = airports.map(airport => [airport.lon, airport.lat]);
+  console.log("Generating Voronoi diagram with", seeds.length, "seeds");
+  const voronoi = geoVoronoi(seeds);
+  svg.append("g")
+    .attr("class", styles.voronoiGroup)
+    .selectAll("path")
+    .data(voronoi.polygons().features)
+    .enter()
+    .append('path')
+    .attr('d', path)
+    .attr('class', styles.voronoiCell);
+
+  // --- Interaction ---
+  addInteraction(svg, projection, path, width, height, type);
+
+  // --- Initial draw ---
+  refresh(svg, path);
 }
 
-// Map interaction function
-function mapInteraction(svg, projection, path, graticulePath, outline) {
-  const minZoom = 200;
-  const maxZoom = 1200;
+function filter_far_side(svg, projection) {
+  svg.selectAll("circle")
+    .attr("display", d => {
+      const gdistance = d3.geoDistance([-projection.rotate()[0], -projection.rotate()[1]], [d.lon, d.lat]);
+      return gdistance < Math.PI / 2 ? null : "none";
+    });
+}
 
-  const zoom = d3
-    .zoom()
+
+/** --- Projection factory --- **/
+function createProjection(type, width, height) {
+  if (type === "globe") {
+    return d3.geoOrthographic()
+      .translate([width / 2, height / 2])
+      .scale(Math.min(width, height) / 2.1)
+      .clipAngle(90);
+  } else {
+    return d3.geoMercator()
+      .translate([width / 2, height / 2])
+      .scale(width / (2 * Math.PI));
+  }
+}
+
+/** --- Globe Rotation --- **/
+function addInteraction(svg, projection, path, width, height, type) {
+  const minZoom = projection.scale();
+  const maxZoom = minZoom * 8;
+
+  const zoom = d3.zoom()
     .scaleExtent([minZoom, maxZoom])
-    .on("zoom", (event) => {
-      // Zoom (prevent shrinkage at start)
-      if (event.transform.k > minZoom && event.transform.k < maxZoom) {
-        projection.scale(event.transform.k);
+    .on("zoom", event => {
+      const k = event.transform.k;
+
+      if (k >= minZoom && k < maxZoom) {
+        projection.scale(k);
       }
 
-      // Drag
       if (event.sourceEvent) {
-        const rotate = projection.rotate();
-        const k = 0.25; // Sensitivity factor
-        projection.rotate([
-          rotate[0] + (event.sourceEvent.movementX || 0) * k,
-          rotate[1] - (event.sourceEvent.movementY || 0) * k,
-        ]);
-      }
+        if (type === "globe") {
+          const rotate = projection.rotate();
+          const sensitivity = 1 / (k / 100); // Sensitivity decreases as zoom increases
+          projection.rotate([
+            rotate[0] + (event.sourceEvent.movementX || 0) * sensitivity,
+            rotate[1] - (event.sourceEvent.movementY || 0) * sensitivity,
+          ]);
+          // Filter out airports on the far side
+          filter_far_side(svg, projection);
 
-      refresh(svg, path, graticulePath, outline);
+        } else if (type === "flat") {
+          const translate = projection.translate();
+          const translateX = translate[0] + (event.sourceEvent.movementX || 0);
+          const translateY = translate[1] + (event.sourceEvent.movementY || 0);
+          const newX = Math.min(50 + (3 * k), Math.max(width - 50 - (3 * k), translateX));
+          const newY = Math.min(50 + (3 * k), Math.max(height - 50 - (3 * k), translateY));
+          projection.translate([newX, newY]);
+        }
+      }
+      refresh(svg, path);
     });
 
   svg.call(zoom);
+  svg.call(zoom.transform, d3.zoomIdentity.scale(projection.scale())); // Sync initial scale
 }
 
 
-// Redraw map elements
-function refresh(svg, path, graticulePath, outline) {
-  svg.selectAll(".country").attr("d", path);
-  graticulePath.attr("d", path);
-  outline.attr("d", path);
+/** --- Redraw elements --- **/
+function refresh(svg, path) {
+  svg.selectAll(`.${styles.country}`).attr("d", path);
+  svg.selectAll(`.${styles.graticule}`).attr("d", path);
+  svg.selectAll(`.${styles.outline}`).attr("d", path);
+  svg.selectAll("circle")
+    .attr("cx", d => path.projection()([d.lon, d.lat])[0])
+    .attr("cy", d => path.projection()([d.lon, d.lat])[1]);
+  svg.selectAll(`.${styles.voronoiCell}`).attr("d", path);
 }
