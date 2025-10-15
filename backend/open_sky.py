@@ -10,6 +10,7 @@ from geopy.distance import geodesic
 
 # TODO define some kind of dictionary for all valid airports
 
+
 def test_api():
     geolocator = Nominatim(user_agent="testApp")
     location = geolocator.geocode("Dallas Fort Worth International Airport, Dallas, TX")
@@ -27,9 +28,10 @@ def test_api():
     # plt.show()
 
     api = REST()
-    data = api.states() # TODO fixme to use bounds
+    data = api.states()  # TODO fixme to use bounds
     for flight in data.itertuples():
         print(flight)
+
 
 def get_bbox(lat, lng, miles):
     # sw, ne
