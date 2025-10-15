@@ -13,3 +13,4 @@ dependencies:
   - requests
   - ipython
   - pyopensky
+  - geopy
