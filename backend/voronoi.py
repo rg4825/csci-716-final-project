@@ -1,9 +1,11 @@
-# file: voronoi.py
-# description: testing implementation of creating Voronoi diagrams
+"""
+File:   voronoi.py
+Description:    implementation of the Bowyer-Watson algorithm to create a
+                Delaunay triangulation and use the circumcenters to find
+                edges of the Voronoi diagram
+"""
 
-import math
-import matplotlib.pyplot as plt  # for testing
-
+import math, json
 
 class Edge:
     def __init__(self, p1, p2):
@@ -13,10 +15,8 @@ class Edge:
         else:
             self.p1 = p2
             self.p2 = p1
-        self.midpoint = (
-            (self.p1[0] + self.p2[0]) / 2.0,
-            (self.p1[1] + self.p2[1]) / 2.0,
-        )
+        self.midpoint = ((self.p1[0] + self.p2[0]) / 2.0,
+                         (self.p1[1] + self.p2[1]) / 2.0)
         if self.p1[0] - self.p2[0] == 0:
             self.slope = None
         else:
@@ -27,27 +27,24 @@ class Edge:
             self.perp_slope = None
         else:
             self.perp_slope = -1.0 / self.slope
-
+    
     def __eq__(self, other_edge):
         if not isinstance(other_edge, Edge):
             return False
         return self.p1 == other_edge.p1 and self.p2 == other_edge.p2
-
+    
     def __hash__(self):
         return hash((self.p1, self.p2))
 
 
 class Triangle:
-    # circumcenter is a site of the Voronoi diagram
     def __init__(self, p1, p2, p3):
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
-        self.edges = [
-            Edge(self.p1, self.p2),
-            Edge(self.p1, self.p3),
-            Edge(self.p2, self.p3),
-        ]
+        self.edges = [Edge(self.p1, self.p2),
+                      Edge(self.p1, self.p3),
+                      Edge(self.p2, self.p3)]
         self.circumcenter = None
 
     def __eq__(self, other_triangle):
@@ -57,20 +54,27 @@ class Triangle:
             if edge not in other_triangle.edges:
                 return False
         return True
-
+    
     def __hash__(self):
         return hash((self.p1, self.p2, self.p3))
 
     def find_circumcenter(self):
-        # find midpoints of two lines:
+        """
+        Find the circumcenter of the triangle, which are used to find the
+        circumcircle for Delaunay triangulation and are the vertices of the
+        Voronoi diagram
+        Returns:
+            the circumcenter of this triangle
+        """
+        #find midpoints of two lines:
         if self.circumcenter != None:
             return self.circumcenter
         midpoint1 = self.edges[0].midpoint
         midpoint2 = self.edges[1].midpoint
-        # find slopes of same two lines and perpendicular lines
+        #find slopes of same two lines and perpendicular lines
         perp_slope1 = self.edges[0].perp_slope
         perp_slope2 = self.edges[1].perp_slope
-        # calculate x, y where the perpendicular bisectors intersect:
+        #calculate x, y where the perpendicular bisectors intersect:
         if perp_slope1 is None:
             x = midpoint1[0]
             b = midpoint2[1] - (perp_slope2 * midpoint2[0])
@@ -89,26 +93,25 @@ class Triangle:
             x = (y - b) / perp_slope1
         else:
             if perp_slope1 - perp_slope2 == 0:
-                # find better way to handle this error?
-                # might also need to handle collinear points...?
-                print(
-                    "Error: perpendicular bisectors are parallel, can't find circumcenter"
-                )
+                #TODO: figure out how to handle this error
+                print("Error: perpendicular bisectors are parallel, can't find circumcenter")
                 exit(1)
-            x = (
-                (perp_slope1 * midpoint1[0])
-                - midpoint1[1]
-                - (perp_slope2 * midpoint2[0])
-                + midpoint2[1]
-            ) / (perp_slope1 - perp_slope2)
+            x = ((perp_slope1 * midpoint1[0]) - midpoint1[1] - (perp_slope2 * midpoint2[0]) + midpoint2[1]) / (perp_slope1 - perp_slope2)
             y = (perp_slope1 * (x - midpoint1[0])) + midpoint1[1]
         self.circumcenter = (x, y)
         return self.circumcenter
-
+        
     def find_circumcircle(self):
+        """
+        Find the circumcircle of the triangle, which is used to determine
+        which triangles belong in a Delaunay triangulation
+        Returns:
+            the circumcircle of this triangle
+        """
         center = self.find_circumcenter()
         dist = math.sqrt(
-            math.pow(center[0] - self.p1[0], 2) + math.pow(center[1] - self.p1[1], 2)
+            math.pow(center[0] - self.p1[0], 2) + 
+            math.pow(center[1] - self.p1[1], 2)
         )
         return Circle(center, dist)
 
@@ -117,9 +120,16 @@ class Circle:
     def __init__(self, center, radius):
         self.center = center
         self.radius = radius
-
+    
 
 def find_supertriangle(points):
+    """
+    Finds a supertriangle that surrounds the set of points provided
+    Arguments:
+        points: list of tuples representing x, y coordinates
+    Returns:
+        a triangle object representing the supertriangle
+    """
     min_x = min(p[0] for p in points)
     max_x = max(p[0] for p in points)
     min_y = min(p[1] for p in points)
@@ -128,11 +138,24 @@ def find_supertriangle(points):
     mid_y = (min_y + max_y) / 2.0
     dx = max_x - min_x
     dy = max_y - min_y
-    d = max(dx, dy) * 5.0  # added scaling factor to make large enough triangle
-    return Triangle((mid_x - d, mid_y - d), (mid_x, mid_y + d), (mid_x + d, mid_y - d))
+    d = max(dx, dy) * 5.0 #added scaling factor to make large enough triangle
+    return Triangle(
+        (mid_x - d, mid_y - d),
+        (mid_x, mid_y + d),
+        (mid_x + d, mid_y - d)
+    )
 
 
 def bowyer_watson(points):
+    """
+    Finds the Delaunay triangulation for a given set of points using the
+    Bowyer-Watson algorithm
+    Arguments:
+        points: a list of tuples representing x, y coordinates
+    Returns:
+        triangulation: a list of triangles that form the 
+                       Delaunay triangulation
+    """
     supertriangle = find_supertriangle(points)
     triangulation = [supertriangle]
     for point in points:
@@ -141,11 +164,12 @@ def bowyer_watson(points):
             circumcircle = triangle.find_circumcircle()
             center = circumcircle.center
             dist = math.sqrt(
-                math.pow(center[0] - point[0], 2) + math.pow(center[1] - point[1], 2)
+                math.pow(center[0] - point[0], 2) + 
+                math.pow(center[1] - point[1], 2)
             )
-            if dist < circumcircle.radius:  # <= ?
+            if dist < circumcircle.radius: # <= ?
                 bad_triangles.append(triangle)
-
+        
         polygon = []
         to_remove = []
         for triangle in bad_triangles:
@@ -154,7 +178,7 @@ def bowyer_watson(points):
                     to_remove.append(edge)
                 else:
                     polygon.append(edge)
-
+        
         for edge in to_remove:
             if edge in polygon:
                 polygon.remove(edge)
@@ -165,65 +189,118 @@ def bowyer_watson(points):
             triangulation.append(Triangle(point, edge.p1, edge.p2))
 
     triangulation = [
-        t
-        for t in triangulation
+        t for t in triangulation 
         if t.p1 not in [supertriangle.p1, supertriangle.p2, supertriangle.p3]
         and t.p2 not in [supertriangle.p1, supertriangle.p2, supertriangle.p3]
         and t.p3 not in [supertriangle.p1, supertriangle.p2, supertriangle.p3]
     ]
-
+    
     return triangulation
 
 
-def voronoi_from_triangulation(triangulation):
-    pass
-    # for triangle in triangulation
-    #   for edge in triangle
-    #       if edge in another triangle
-    #           create an edge from circumcenters of the triangles
-    #       else
-    #           edge extends toward infinity in the direction perpendicular from the edge
-    # make edge class that can also hold slope to handle extending out to infinity??
-    # could also add custom comparator
-    """figure, axes = plt.subplots()
-    plt.title('Delaunay Triangles & Voronoi Diagram')
-    circumcenters_x = []
-    circumcenters_y = []
-    for t in triangulation:
-        plt.plot([t.p1[0], t.p2[0]], [t.p1[1], t.p2[1]], c='b')
-        plt.plot([t.p1[0], t.p3[0]], [t.p1[1], t.p3[1]], c='b')
-        plt.plot([t.p2[0], t.p3[0]], [t.p2[1], t.p3[1]], c='b')
-        circumcenters_x.append(t.find_circumcenter()[0])
-        circumcenters_y.append(t.find_circumcenter()[1])
-    plt.scatter(circumcenters_x, circumcenters_y, c='r')
-
-    current_xlim = plt.xlim()
-    current_ylim = plt.ylim()
-
-    for t1 in triangulation:
-        c1 = t1.find_circumcenter()
-        for edge in t1.edges:
+def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
+    """
+    Given the Delaunay triangulation of a set of points, create the Voronoi
+    diagram formed by the circumcenters and create a JSON object representing
+    the edges of the Voronoi diagram
+    Arguments:
+        triangulation: a list of triangles that form the 
+                       Delaunay triangulation
+        min_x: minimum x coordinate the "infinite edges" can extend out to
+        min_y: minimum y coordinate the "infinite edges" can extend out to
+        max_x: maximum x coordinate the "infinite edges" can extend out to
+        max_y: maximum y coordinate the "infinite edges" can extend out to
+    Returns:
+        JSON object representing a Voronoi diagram
+    """
+    voronoi_edges = []
+    ch_circumcenters = {}
+    ch_vertices = []
+    for tri1 in triangulation:
+        c1 = tri1.find_circumcenter()
+        for edge in tri1.edges:
             edge_found = False
-            for t2 in triangulation:
-                if t1 == t2:
+            for tri2 in triangulation:
+                if tri1 == tri2:
                     continue
-                if edge in t2.edges:
-                    c2 = t2.find_circumcenter()
-                    plt.plot([c1[0], c2[0]], 
-                             [c1[1], c2[1]], 
-                             c='r', ls='--')
+                if edge in tri2.edges:
+                    # edge is part of two different triangles in triangulation
+                    c2 = tri2.find_circumcenter()
+                    voronoi_edges.append(Edge(c1, c2))
                     edge_found = True
-                    
             if not edge_found:
-                perp_slope = edge.perp_slope
-                midpt = edge.midpoint
-                #find direction to edge from midpt, steps:
-                #treat find unit vector to find direction?
-                #find distance from midpt to c1
-                #extend to boundary using line formula
+                # edge is an edge of the entire polygon, extend "infinitely"
+                other_edges = [e for e in tri1.edges if e != edge]
+                # find point in triangle that isn't one of edge's points
+                if other_edges[0].p1 == edge.p1:
+                    vertex = other_edges[0].p2
+                else:
+                    vertex = other_edges[0].p1
 
-    plt.xlim((0, current_xlim[1]))
-    plt.ylim((0, current_ylim[1]))
+                if edge.perp_slope is None:
+                    # check whether c1 is above or below other vertex
+                    if edge.midpoint[1] < vertex[1]:
+                        # draw line down
+                        voronoi_edges.append(Edge(c1, (c1[0], min_y)))
+                    else:
+                        # draw line up
+                        voronoi_edges.append(Edge(c1, (c1[0], max_y)))
+                elif edge.perp_slope == 0:
+                    # check whether c1 is to the left or right of other vertex
+                    if edge.midpoint[0] < vertex[0]:
+                        # draw line left
+                        voronoi_edges.append(Edge(c1, (min_x, c1[1])))
+                    else:
+                        # draw line right
+                        voronoi_edges.append(Edge(c1, (max_x, c1[1])))
+                else:
+                    ch_circumcenters[c1] = edge
 
-    plt.savefig('test.png')
-    #plt.show()"""
+    for edge in ch_circumcenters.values():
+        ch_vertices.append(edge.p1)
+        ch_vertices.append(edge.p2)
+
+    ch_vertices = list(set(ch_vertices)) # remove duplicates
+    if len(ch_vertices) > 0:
+        x_mid = (min([point[0] for point in ch_vertices]) + max([point[0] for point in ch_vertices])) / 2.0
+        y_mid = (min([point[1] for point in ch_vertices]) + max([point[1] for point in ch_vertices])) / 2.0
+    
+    for c, edge in ch_circumcenters.items():
+        if abs(edge.slope) < 1: # treat as horizontal
+            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
+            y = (edge.slope * x_mid) + b
+            if y < y_mid: # draw line down
+                y = min_y
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                x = (y - b) / edge.perp_slope
+                voronoi_edges.append(Edge(c, (x, y)))
+            else:   # draw line up
+                y = max_y
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                x = (y - b) / edge.perp_slope
+                voronoi_edges.append(Edge(c, (x, y)))
+        else:   # treat as vertical
+            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
+            x = (y_mid - b) / edge.slope
+            if x < x_mid:   # draw line left
+                x = min_x
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                y = (edge.perp_slope * x) + b
+                voronoi_edges.append(Edge(c, (x, y)))
+            else:   # draw line right
+                x = max_x
+                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                y = (edge.perp_slope * x) + b
+                voronoi_edges.append(Edge(c, (x, y)))
+                
+    #convert edges to dicts of p1, p2
+    edge_dicts = []
+    for edge in voronoi_edges:
+        edge_dicts.append({
+            'x1': edge.p1[0],
+            'y1': edge.p1[1],
+            'x2': edge.p2[0],
+            'y2': edge.p2[1]
+        })
+    voronoi_obj = json.dumps({'edges': edge_dicts})
+    return voronoi_obj
