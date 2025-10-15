@@ -8,7 +8,8 @@ from tqdm import tqdm
 
 class Organism:
     """
-    Represents a single organism as a part of the population.
+    Represents a single organism as a part of the population. Meant to used with the roulette wheel method
+    for selecting the next generation.
     """
 
     def __init__(self, chromosomes, fitness_func, genome, to_string=None):
@@ -24,12 +25,13 @@ class Organism:
 
         self.fitness = self.fitness_func(self.chromosomes)
 
-    def reproduce(self, other, inheritance=0.45):
+    def reproduce(self, other, crossover=0.80):
         """
-        TODO have this implement the roulette wheel method
-        :param other:
-        :param inheritance:
-        :return:
+        Creates a new organism using the chromosomes of each parent, with a chance of mutation equal to
+        1-crossover.
+        :param other:       the other organism for genes to passed on
+        :param crossover:   the chance of a gene to be taken from a parent
+        :return:            a new organism inheriting traits from both parents
         """
         child_chromosome = []
         rng = np.random.default_rng()
@@ -37,11 +39,11 @@ class Organism:
         for gene1, gene2 in zip(self.chromosomes, other.chromosomes):
             p = rng.random()
 
-            if p < inheritance:
+            if p < crossover / 2:
                 child_chromosome.append(gene1)
                 continue
 
-            elif p < inheritance * 2:
+            elif p < crossover:
                 child_chromosome.append(gene2)
                 continue
 
@@ -62,7 +64,8 @@ class Organism:
 
 class Population:
     """
-    Represents a group of individuals, on which to simulate evolution on.
+    Represents a group of individuals, on which to simulate evolution on. Uses the roulette wheel method for
+    creating the next generation.
     """
 
     def __init__(
@@ -83,9 +86,12 @@ class Population:
                                     the better
         :param generation_size:     (opt.) number of organisms per generation, default 500
         :param num_generations:     (opt.) the maximum number of generations, beyond initialization, default 200
-        :param threshold:           (opt.) if the fitness is beyond this threshold for an organism, stop evolution
+        :param threshold:           (opt.) if the fitness is beyond this threshold for an organism, stop evolution,
+                                    default .999 (in essence meaning that the algo will not stop based on threshold
+                                    until near perfect)
         :param patience:            (opt.) the number of generations that need to pass w/o improvement for the
-                                    algorithm to stop
+                                    algorithm to stop, default is sentinel value 0 corresponding to patience being
+                                    turned off
         :param organism_to_string:  (opt.) function that should be used by the Organism object as its __str__() method,
                                     default None
         """
@@ -105,7 +111,7 @@ class Population:
         """
         Given the current generation, evolve the population until either the threshold is hit or the maximum number
         of generations is hit.
-        :return:
+        :return:    the most fit organism from evolving this papulation.
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
@@ -158,25 +164,24 @@ class Population:
 
         return fittest_organism
 
-    def advance_one_generation(self, elitism=0.1, offspring_rate=0.5):
+    def advance_one_generation(self):
         """
-        Advances the population by one generation. Changes the state of this Population object.
-        Assumes that the current generation is already sorted by fitness.
+        Advances the population by one generation using the roulette wheel method. Changes the state of this
+        Population object. Assumes that the current generation is already sorted by fitness.
         :return:    the fittest Organism from this generation
         """
         new_generation = []
         rng = np.random.default_rng()
-        top_elite = int(self.generation_size * elitism)
 
-        new_generation.extend(self.current_generation[:top_elite])
-        top = self.current_generation[: int(self.generation_size * offspring_rate)]
+        total_fitness = sum([o.fitness for o in self.current_generation])
+        probs = [o.fitness / total_fitness for o in self.current_generation]
 
         for _ in tqdm(
-            range(top_elite, self.generation_size),
+            range(self.generation_size),
             desc=f"Generation {self.current_generation_index}",
         ):
-            p1 = rng.choice(top)
-            p2 = rng.choice(top)
+            p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
+            p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
             child = p1.reproduce(p2)
             new_generation.append(child)
 
@@ -188,6 +193,7 @@ class Population:
     def initialize_generation(self):
         """
         Updates self.current_generation if it's currently empty with self.generation_size number of organisms.
+        :return:    None
         """
         if self.current_generation:
             return

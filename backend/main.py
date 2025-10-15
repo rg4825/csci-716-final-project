@@ -6,7 +6,7 @@ def test_ga():
     import string
     from genetic_algorithm import Population
 
-    target = list("Hello, Computational Geometry!")
+    target = list("hello")
 
     genome = (
         list(string.ascii_letters)
@@ -32,12 +32,9 @@ def test_ga():
         genome,
         chromosome_len,
         fitness_func,
-        threshold=0.999,
-        generation_size=2000,
-        num_generations=0,
         organism_to_string=to_string,
-        patience=0,
     )
+
     fittest = population.fully_evolve_population()
     print(f"{fittest}")
 
