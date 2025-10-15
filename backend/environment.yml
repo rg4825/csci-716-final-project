@@ -10,3 +10,7 @@ dependencies:
   - numpy
   - loguru
   - tqdm
+  - requests
+  - ipython
+  - pyopensky
+  - geopy

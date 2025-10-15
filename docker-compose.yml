@@ -1,10 +1,12 @@
 services:
   backend:
     build:
-      context: backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     working_dir: /app/backend/
     container_name: backend
+    env_file:
+      - .env.local
     volumes:
       - ./backend/:/app/backend/
 
