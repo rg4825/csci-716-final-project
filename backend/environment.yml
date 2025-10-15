@@ -12,5 +12,4 @@ dependencies:
   - tqdm
   - requests
   - ipython
-  - pip:
-      - -e /app/opensky-api/python
+  - pyopensky
