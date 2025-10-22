@@ -6,6 +6,7 @@ Description:    implementation of the Bowyer-Watson algorithm to create a
 """
 
 import math, json
+from geojson import Feature, FeatureCollection, Point
 
 
 class Edge:
@@ -314,3 +315,15 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
         )
     voronoi_obj = json.dumps({"edges": edge_dicts})
     return voronoi_obj
+
+
+def main():
+    # simple test case
+    points = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+    triangulation = bowyer_watson(points)
+    voronoi = voronoi_from_triangulation(triangulation, 0, 0, 400, 400)
+    # Pretty print the Voronoi diagram JSON
+    print(json.dumps(json.loads(voronoi), indent=2))
+
+if __name__ == "__main__":
+    main()

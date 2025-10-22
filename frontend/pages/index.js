@@ -92,7 +92,10 @@ async function renderMap(container, type = "globe") {
   // Draw Voronoi cells
   const seeds = airports.map(airport => [airport.lon, airport.lat]);
   console.log("Generating Voronoi diagram with", seeds.length, "seeds");
-  const voronoi = geoVoronoi(seeds);
+  //const voronoi = geoVoronoi(seeds);
+  const points = [[10, 10], [20, 20], [30, 10], [20, 5], [25, 15]];
+  const voronoi = geoVoronoi(points);
+  console.log(voronoi.polygons().features);
   svg.append("g")
     .attr("class", styles.voronoiGroup)
     .selectAll("path")
