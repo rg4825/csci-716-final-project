@@ -2,6 +2,8 @@
 # description:  the main script file
 
 from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import List
 
 from voronoi import *
 
@@ -12,13 +14,30 @@ def test():
     return {"output": "hello world"}
 
 
-# Get the 2D Voronoi diagram for a set of example seeds
-@app.get("/voronoi/2dexample")
-def voronoi_endpoint():
-    # Example seeds
-    seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+app = FastAPI()
+
+class VoronoiRequest(BaseModel):
+    seeds: List[List[float]]  # List of [x, y] coordinates
+    min_x: float = 0
+    min_y: float = 0
+    max_x: float = 100
+    max_y: float = 100
+
+@app.post("/voronoi/2dexample")
+def voronoi_endpoint(request: VoronoiRequest):
+    # Convert list of lists to list of tuples
+    seeds = [tuple(seed) for seed in request.seeds]
+    
+    # Generate Voronoi diagram
     triangles = bowyer_watson(seeds)
-    polygons = voronoi_from_triangulation(triangles, 0, 0, 40, 40)
+    polygons = voronoi_from_triangulation(
+        triangles, 
+        request.min_x, 
+        request.min_y, 
+        request.max_x, 
+        request.max_y
+    )
+    
     return {"voronoi_polygons": polygons}
 
 # Get the 2d Voronoi diagram for a set of given seeds

@@ -337,3 +337,9 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
     '''
 
 
+seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+triangles = bowyer_watson(seeds)
+polygons = voronoi_from_triangulation(triangles, 0, 0, 40, 40)
+# Pretty print each feature on a new line
+for feature in json.loads(polygons)["features"]:
+    print(feature)

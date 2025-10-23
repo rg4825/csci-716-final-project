@@ -34,20 +34,43 @@ async function render2d(container) {
   d3.select(container).selectAll("*").remove();
   let voronoi = null;
 
-  let seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)];
+  // Seeds to send to backend
+  let seeds = [[10, 10], [20, 20], [30, 10], [20, 5], [25, 15]];
 
-  // Call the backend with fast api and log the response to console
-  fetch("api/voronoi/2dexample")
+  // Call the backend with POST request
+  fetch("api/voronoi/2dexample", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      seeds: seeds,
+      min_x: 0,
+      min_y: 0,
+      max_x: width,
+      max_y: height
+    })
+  })
     .then(response => response.json())
     .then(data => {
       // Parse the inner JSON
       voronoi = JSON.parse(data.voronoi_polygons);
       console.log("Parsed Voronoi lines from backend:", voronoi);
 
+
       const svg = d3.select(container)
         .append("svg")
         .attr("width", width)
         .attr("height", height);
+
+      // Create scales to map Voronoi coordinates to SVG coordinates
+      const xScale = d3.scaleLinear()
+        .domain([0, 40])  // Voronoi coordinate range
+        .range([0, width]);
+
+      const yScale = d3.scaleLinear()
+        .domain([0, 40])
+        .range([0, height]);
 
       // --- Draw Voronoi edges as lines ---
       svg.append("g")
@@ -56,11 +79,22 @@ async function render2d(container) {
         .data(voronoi.features)
         .enter()
         .append('line')
-        .attr('x1', d => d.geometry.coordinates[0][0])
-        .attr('y1', d => d.geometry.coordinates[0][1])
-        .attr('x2', d => d.geometry.coordinates[1][0])
-        .attr('y2', d => d.geometry.coordinates[1][1])
+        .attr('x1', d => xScale(d.geometry.coordinates[0][0]))
+        .attr('y1', d => yScale(d.geometry.coordinates[0][1]))
+        .attr('x2', d => xScale(d.geometry.coordinates[1][0]))
+        .attr('y2', d => yScale(d.geometry.coordinates[1][1]))
         .attr('class', styles.voronoiCell);
+
+      // --- Draw seeds as circles ---
+      svg.append("g")
+        .selectAll("circle")
+        .data(seeds)
+        .enter()
+        .append("circle")
+        .attr("cx", d => xScale(d[0]))
+        .attr("cy", d => yScale(d[1]))
+        .attr("r", 10) // radius
+        .attr("class", styles.airport);
     })
     .catch(error => {
       console.error("Error fetching Voronoi data:", error);
