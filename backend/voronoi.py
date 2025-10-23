@@ -261,50 +261,18 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                         # draw line right
                         voronoi_edges.append(Edge(c1, (max_x, c1[1])))
                 else:
-                    ch_circumcenters[c1] = edge
+                    # find vector representing the edge
+                    p1p2 = (edge.p2[0] - edge.p1[0],
+                            edge.p2[1] - edge.p1[1])
+                    p1p3 = (vertex[0] - edge.p1[0],
+                            vertex[1] - edge.p1[1])
+                    orientation = (p1p2[0] * p1p3[1]) - (p1p2[1] * p1p3[0])
+                    y = min_y if orientation > 0 else max_y
+                    b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                    x = (y - b) / edge.perp_slope
+                    voronoi_edges.append(Edge(c1, (x, y)))
 
-    for edge in ch_circumcenters.values():
-        ch_vertices.append(edge.p1)
-        ch_vertices.append(edge.p2)
-
-    ch_vertices = list(set(ch_vertices))  # remove duplicates
-    if len(ch_vertices) > 0:
-        x_mid = (
-            min([point[0] for point in ch_vertices])
-            + max([point[0] for point in ch_vertices])
-        ) / 2.0
-        y_mid = (
-            min([point[1] for point in ch_vertices])
-            + max([point[1] for point in ch_vertices])
-        ) / 2.0
-
-    for c, edge in ch_circumcenters.items():
-        if abs(edge.slope) < 1:  # treat as horizontal
-            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
-            y = (edge.slope * x_mid) + b
-            if y < y_mid:  # draw line down
-                y = min_y
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                x = (y - b) / edge.perp_slope
-                voronoi_edges.append(Edge(c, (x, y)))
-            else:  # draw line up
-                y = max_y
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                x = (y - b) / edge.perp_slope
-                voronoi_edges.append(Edge(c, (x, y)))
-        else:  # treat as vertical
-            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
-            x = (y_mid - b) / edge.slope
-            if x < x_mid:  # draw line left
-                x = min_x
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                y = (edge.perp_slope * x) + b
-                voronoi_edges.append(Edge(c, (x, y)))
-            else:  # draw line right
-                x = max_x
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                y = (edge.perp_slope * x) + b
-                voronoi_edges.append(Edge(c, (x, y)))
+    voronoi_edges = list(set(voronoi_edges))
 
     # Store edges as GeoJSON object
     voronoi_lines = {"type": "FeatureCollection", "features": []}
