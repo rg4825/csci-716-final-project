@@ -306,6 +306,26 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                 y = (edge.perp_slope * x) + b
                 voronoi_edges.append(Edge(c, (x, y)))
 
+    # Store edges as GeoJSON object
+    voronoi_lines = {"type": "FeatureCollection", "features": []}
+    for edge in voronoi_edges:
+        voronoi_lines["features"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [edge.p1[0], edge.p1[1]],
+                        [edge.p2[0], edge.p2[1]],
+                    ],
+                },
+                "properties": {},
+            }
+        )
+    voronoi_obj = json.dumps(voronoi_lines)
+    return voronoi_obj
+
+    '''
     # convert edges to dicts of p1, p2
     edge_dicts = []
     for edge in voronoi_edges:
@@ -314,3 +334,6 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
         )
     voronoi_obj = json.dumps({"edges": edge_dicts})
     return voronoi_obj
+    '''
+
+

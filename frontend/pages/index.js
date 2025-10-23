@@ -9,18 +9,62 @@ import styles from "../styles/Home.module.css";
 export default function Home() {
   const globeRef = useRef(null);
   const mapRef = useRef(null);
+  const voronoiRef = useRef(null);
 
   useEffect(() => {
     if (globeRef.current) renderMap(globeRef.current, "globe");
     if (mapRef.current) renderMap(mapRef.current, "flat");
+    if (voronoiRef.current) render2d(voronoiRef.current);
   }, []);
 
   return (
     <main className={styles.container}>
       <div ref={globeRef} />
       <div ref={mapRef} />
+      <div ref={voronoiRef} />
     </main>
   );
+}
+
+/** 2D Voronoi specific renderer **/
+async function render2d(container) {
+  // --- Setup ---
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  d3.select(container).selectAll("*").remove();
+  let voronoi = null;
+
+  let seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)];
+
+  // Call the backend with fast api and log the response to console
+  fetch("api/voronoi/2dexample")
+    .then(response => response.json())
+    .then(data => {
+      // Parse the inner JSON
+      voronoi = JSON.parse(data.voronoi_polygons);
+      console.log("Parsed Voronoi lines from backend:", voronoi);
+
+      const svg = d3.select(container)
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+      // --- Draw Voronoi edges as lines ---
+      svg.append("g")
+        .attr("class", styles.voronoiGroup)
+        .selectAll("line")
+        .data(voronoi.features)
+        .enter()
+        .append('line')
+        .attr('x1', d => d.geometry.coordinates[0][0])
+        .attr('y1', d => d.geometry.coordinates[0][1])
+        .attr('x2', d => d.geometry.coordinates[1][0])
+        .attr('y2', d => d.geometry.coordinates[1][1])
+        .attr('class', styles.voronoiCell);
+    })
+    .catch(error => {
+      console.error("Error fetching Voronoi data:", error);
+    });
 }
 
 /** --- Generalized map renderer --- **/
@@ -92,6 +136,7 @@ async function renderMap(container, type = "globe") {
   // Draw Voronoi cells
   const seeds = airports.map(airport => [airport.lon, airport.lat]);
   console.log("Generating Voronoi diagram with", seeds.length, "seeds");
+
   const voronoi = geoVoronoi(seeds);
   svg.append("g")
     .attr("class", styles.voronoiGroup)
