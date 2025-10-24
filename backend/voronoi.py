@@ -221,8 +221,6 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
         JSON object representing a Voronoi diagram
     """
     voronoi_edges = []
-    ch_circumcenters = {}
-    ch_vertices = []
     for tri1 in triangulation:
         c1 = tri1.find_circumcenter()
         for edge in tri1.edges:
@@ -239,7 +237,8 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                 # edge is an edge of the entire polygon, extend "infinitely"
                 other_edges = [e for e in tri1.edges if e != edge]
                 # find point in triangle that isn't one of edge's points
-                if other_edges[0].p1 == edge.p1:
+                if (other_edges[0].p1 == edge.p1 or
+                    other_edges[0].p1 == edge.p2):
                     vertex = other_edges[0].p2
                 else:
                     vertex = other_edges[0].p1
@@ -267,7 +266,10 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                     p1p3 = (vertex[0] - edge.p1[0],
                             vertex[1] - edge.p1[1])
                     orientation = (p1p2[0] * p1p3[1]) - (p1p2[1] * p1p3[0])
-                    y = min_y if orientation > 0 else max_y
+                    if orientation > 0:
+                        y = min_y
+                    else:
+                        y = max_y
                     b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
                     x = (y - b) / edge.perp_slope
                     voronoi_edges.append(Edge(c1, (x, y)))
