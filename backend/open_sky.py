@@ -8,11 +8,11 @@ from geopy import Point
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
-DEFAULT_AIRPORT="Dallas Fort Worth International Airport, Dallas, TX"
+DEFAULT_AIRPORT="32.896801,-97.038002"  # DFW Airport
 
-def get_flights(airport=DEFAULT_AIRPORT, radius=50):
+def get_flights(airport_lat_lng=DEFAULT_AIRPORT, radius=50):
     geolocator = Nominatim(user_agent="testApp")
-    location = geolocator.geocode(airport)
+    location = geolocator.geocode(airport_lat_lng)
     bbox = get_bbox(location.latitude, location.longitude, radius)
 
     api = REST()
