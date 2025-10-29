@@ -3,6 +3,7 @@
 
 from open_sky import get_flights
 
+
 def test_ga():
     import string
     from genetic_algorithm import Population
@@ -44,7 +45,7 @@ def test_ga():
 
 
 def main():
-    data = get_flights()
+    data = get_flights(airport="Akron Canton Regional Airport", radius=10)
     for flight in data.itertuples():
         print(flight)
 
