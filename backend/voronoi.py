@@ -205,7 +205,7 @@ def bowyer_watson(points):
     return triangulation
 
 
-def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
+def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y):
     """
     Given the Delaunay triangulation of a set of points, create the Voronoi
     diagram formed by the circumcenters and create a JSON object representing
@@ -221,8 +221,6 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
         JSON object representing a Voronoi diagram
     """
     voronoi_edges = []
-    ch_circumcenters = {}
-    ch_vertices = []
     for tri1 in triangulation:
         c1 = tri1.find_circumcenter()
         for edge in tri1.edges:
@@ -239,7 +237,8 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                 # edge is an edge of the entire polygon, extend "infinitely"
                 other_edges = [e for e in tri1.edges if e != edge]
                 # find point in triangle that isn't one of edge's points
-                if other_edges[0].p1 == edge.p1:
+                if (other_edges[0].p1 == edge.p1 or
+                    other_edges[0].p1 == edge.p2):
                     vertex = other_edges[0].p2
                 else:
                     vertex = other_edges[0].p1
@@ -261,51 +260,55 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                         # draw line right
                         voronoi_edges.append(Edge(c1, (max_x, c1[1])))
                 else:
-                    ch_circumcenters[c1] = edge
+                    # find vector representing the edge
+                    p1p2 = (edge.p2[0] - edge.p1[0],
+                            edge.p2[1] - edge.p1[1])
+                    p1p3 = (vertex[0] - edge.p1[0],
+                            vertex[1] - edge.p1[1])
+                    orientation = (p1p2[0] * p1p3[1]) - (p1p2[1] * p1p3[0])
+                    if orientation > 0:
+                        y = min_y
+                    else:
+                        y = max_y
+                    b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                    x = (y - b) / edge.perp_slope
+                    voronoi_edges.append(Edge(c1, (x, y)))
 
-    for edge in ch_circumcenters.values():
-        ch_vertices.append(edge.p1)
-        ch_vertices.append(edge.p2)
+    voronoi_edges = list(set(voronoi_edges))
 
-    ch_vertices = list(set(ch_vertices))  # remove duplicates
-    if len(ch_vertices) > 0:
-        x_mid = (
-            min([point[0] for point in ch_vertices])
-            + max([point[0] for point in ch_vertices])
-        ) / 2.0
-        y_mid = (
-            min([point[1] for point in ch_vertices])
-            + max([point[1] for point in ch_vertices])
-        ) / 2.0
+    # Store edges as GeoJSON object
+    voronoi_lines = {"type": "FeatureCollection", "lines": [], "seeds": []}
+    for edge in voronoi_edges:
+        voronoi_lines["lines"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [edge.p1[0], edge.p1[1]],
+                        [edge.p2[0], edge.p2[1]],
+                    ],
+                },
+                "properties": {},
+            }
+        )
+    # Store seeds as GeoJSON points
+    for seed in seeds:
+        voronoi_lines["seeds"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [seed[0], seed[1]],
+                },
+                "properties": {"is_seed": True},
+            }
+        )
 
-    for c, edge in ch_circumcenters.items():
-        if abs(edge.slope) < 1:  # treat as horizontal
-            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
-            y = (edge.slope * x_mid) + b
-            if y < y_mid:  # draw line down
-                y = min_y
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                x = (y - b) / edge.perp_slope
-                voronoi_edges.append(Edge(c, (x, y)))
-            else:  # draw line up
-                y = max_y
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                x = (y - b) / edge.perp_slope
-                voronoi_edges.append(Edge(c, (x, y)))
-        else:  # treat as vertical
-            b = edge.midpoint[1] - (edge.slope * edge.midpoint[0])
-            x = (y_mid - b) / edge.slope
-            if x < x_mid:  # draw line left
-                x = min_x
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                y = (edge.perp_slope * x) + b
-                voronoi_edges.append(Edge(c, (x, y)))
-            else:  # draw line right
-                x = max_x
-                b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
-                y = (edge.perp_slope * x) + b
-                voronoi_edges.append(Edge(c, (x, y)))
+    voronoi_obj = json.dumps(voronoi_lines)
+    return voronoi_obj
 
+    '''
     # convert edges to dicts of p1, p2
     edge_dicts = []
     for edge in voronoi_edges:
@@ -314,3 +317,12 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
         )
     voronoi_obj = json.dumps({"edges": edge_dicts})
     return voronoi_obj
+    '''
+
+
+seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+triangles = bowyer_watson(seeds)
+polygons = voronoi_from_triangulation(seeds, triangles, 0, 0, 40, 40)
+# Pretty print each line on a new line
+for line in json.loads(polygons)["lines"]:
+    print(line)
