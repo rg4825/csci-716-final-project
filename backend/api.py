@@ -10,12 +10,14 @@ from voronoi import *
 
 app = FastAPI()
 
+
 @app.get("/")
 def test():
     return {"output": "hello world"}
 
 
 app = FastAPI()
+
 
 class VoronoiRequest(BaseModel):
     seeds: List[List[float]]  # List of [x, y] coordinates
@@ -24,10 +26,11 @@ class VoronoiRequest(BaseModel):
     max_x: float = 100
     max_y: float = 100
 
+
 class VoronoiUserInputRequest(BaseModel):
     airport_code: str
     radius: float
-    timestamp: str # UTC timestamp
+    timestamp: str  # UTC timestamp
     num_seeds: int
 
     num_generations: int
@@ -35,25 +38,22 @@ class VoronoiUserInputRequest(BaseModel):
     crossover: float
     patience: int
 
+
 # Generate Voronoi diagram from POST request with seeds and bounding box
 # (frontend -> backend -> frontend)
 @app.post("/voronoi/2d")
 def voronoi_endpoint(request: VoronoiRequest):
     # Convert list of lists to list of tuples
     seeds = [tuple(seed) for seed in request.seeds]
-    
+
     # Generate Voronoi diagram
     triangles = bowyer_watson(seeds)
     polygons = voronoi_from_triangulation(
-        seeds,
-        triangles, 
-        request.min_x, 
-        request.min_y, 
-        request.max_x, 
-        request.max_y
+        seeds, triangles, request.min_x, request.min_y, request.max_x, request.max_y
     )
-    
+
     return {"voronoi_polygons": polygons}
+
 
 # Generate Voronoi diagram from GET request (backend -> frontend)
 @app.get("/voronoi/2dstatic")
@@ -66,6 +66,7 @@ def voronoi_2d_endpoint(seeds: str):
     triangles = bowyer_watson(seed_list)
     polygons = voronoi_from_triangulation(seed_list, triangles, 0, 0, 400, 400)
     return {"voronoi_polygons": polygons}
+
 
 # Send the user input to the backend and get the Voronoi diagram
 # Voronoi user input parameters:
@@ -97,6 +98,7 @@ def voronoi_user_input(request: VoronoiUserInputRequest):
 
     return {"message": "Voronoi diagram generation started"}
 
+
 # Stream Voronoi diagrams over time using StreamingResponse
 async def generate_voronoi():
     # Example: Stream Voronoi diagrams over time
@@ -113,10 +115,12 @@ async def generate_voronoi():
         yield json.dumps({"step": i, "voronoi_polygons": polygons})
         await asyncio.sleep(1)  # Simulate time delay
 
+
 # Stream the genetic algorithm output to the frontend
 @app.get("/voronoi/stream")
 async def voronoi_stream():
     async def event_generator():
         async for chunk in generate_voronoi():
             yield f"data: {chunk}\n\n"  # SSE format requires 'data:' prefix and double newline
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")

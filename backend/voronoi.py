@@ -237,8 +237,7 @@ def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y)
                 # edge is an edge of the entire polygon, extend "infinitely"
                 other_edges = [e for e in tri1.edges if e != edge]
                 # find point in triangle that isn't one of edge's points
-                if (other_edges[0].p1 == edge.p1 or
-                    other_edges[0].p1 == edge.p2):
+                if other_edges[0].p1 == edge.p1 or other_edges[0].p1 == edge.p2:
                     vertex = other_edges[0].p2
                 else:
                     vertex = other_edges[0].p1
@@ -261,10 +260,8 @@ def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y)
                         voronoi_edges.append(Edge(c1, (max_x, c1[1])))
                 else:
                     # find vector representing the edge
-                    p1p2 = (edge.p2[0] - edge.p1[0],
-                            edge.p2[1] - edge.p1[1])
-                    p1p3 = (vertex[0] - edge.p1[0],
-                            vertex[1] - edge.p1[1])
+                    p1p2 = (edge.p2[0] - edge.p1[0], edge.p2[1] - edge.p1[1])
+                    p1p3 = (vertex[0] - edge.p1[0], vertex[1] - edge.p1[1])
                     orientation = (p1p2[0] * p1p3[1]) - (p1p2[1] * p1p3[0])
                     if orientation > 0:
                         y = min_y
@@ -308,7 +305,7 @@ def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y)
     voronoi_obj = json.dumps(voronoi_lines)
     return voronoi_obj
 
-    '''
+    """
     # convert edges to dicts of p1, p2
     edge_dicts = []
     for edge in voronoi_edges:
@@ -317,7 +314,7 @@ def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y)
         )
     voronoi_obj = json.dumps({"edges": edge_dicts})
     return voronoi_obj
-    '''
+    """
 
 
 seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
