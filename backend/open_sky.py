@@ -27,7 +27,7 @@ def get_flights(airport=DEFAULT_AIRPORT, radius=50):
     return data
 
 
-def get_flight_trajectories(flights, timestamp=None):
+def get_flight_trajectories(flights):
     """
     TODO finish this
     :param flights:

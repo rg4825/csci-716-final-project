@@ -48,6 +48,7 @@ def main():
     data = get_flights(airport="Akron Canton Regional Airport", radius=10)
     for flight in data.itertuples():
         print(flight)
+    print()
     trajectories = get_flight_trajectories(data)
     for traj in trajectories:
         for i in traj.itertuples():
