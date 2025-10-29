@@ -21,6 +21,10 @@ def get_flights(airport=DEFAULT_AIRPORT, radius=50):
     return data
 
 
+def get_flight_trajectories():
+    pass
+
+
 def get_bbox(lat, lng, miles):
     # sw, ne
     bearings = [225, 45]
