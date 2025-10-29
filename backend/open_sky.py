@@ -5,7 +5,6 @@ import pandas as pd
 
 from pyopensky.rest import REST
 from geopy import Point
-from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
 DEFAULT_AIRPORT="Dallas Fort Worth International Airport"
@@ -14,10 +13,7 @@ AIRPORTS_DF=pd.read_csv('../common/data/airports.csv')
 def get_flights(airport=DEFAULT_AIRPORT, radius=50):
     row = AIRPORTS_DF.loc[AIRPORTS_DF['name'] == airport]
     lat, lng = row.iloc[0]['latitude_deg'], row.iloc[0]['longitude_deg']
-
-    geolocator = Nominatim(user_agent="testApp")
-    location = geolocator.geocode(f"{lat}, {lng}")
-    bbox = get_bbox(location.latitude, location.longitude, radius)
+    bbox = get_bbox(lat, lng, radius)
 
     api = REST()
     data = api.states(bounds=tuple(bbox))
