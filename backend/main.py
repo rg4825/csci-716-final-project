@@ -44,7 +44,7 @@ def test_ga():
     print(f"{fittest}")
 
 
-def main():
+def test_open_sky():
     data = get_flights(airport="Akron Canton Regional Airport", radius=10)
     for flight in data.itertuples():
         print(flight)
@@ -54,6 +54,9 @@ def main():
         for i in traj.itertuples():
             print(i)
         print()
+
+def main():
+    test_open_sky()
 
 
 if __name__ == "__main__":
