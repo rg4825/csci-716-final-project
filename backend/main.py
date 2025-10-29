@@ -1,7 +1,7 @@
 # file:         main.py
 # description:  the main script file
 
-from open_sky import test_api
+from open_sky import get_flights
 
 def test_ga():
     import string
@@ -44,7 +44,9 @@ def test_ga():
 
 
 def main():
-    test_api()
+    data = get_flights()
+    for flight in data.itertuples():
+        print(flight)
 
 
 if __name__ == "__main__":

@@ -8,28 +8,16 @@ from geopy import Point
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 
-# TODO define some kind of dictionary for all valid airports
+DEFAULT_AIRPORT="Dallas Fort Worth International Airport, Dallas, TX"
 
-def test_api():
+def get_flights(airport=DEFAULT_AIRPORT, radius=50):
     geolocator = Nominatim(user_agent="testApp")
-    location = geolocator.geocode("Dallas Fort Worth International Airport, Dallas, TX")
-    bbox = get_bbox(location.latitude, location.longitude, 1000)
-
-    print((location.latitude, location.longitude))
-    print(tuple(bbox))
-    print(geodesic((bbox[0], bbox[1]), (bbox[2], bbox[3])).miles)
-
-    # plt.scatter(location.latitude, location.longitude)
-    # plt.plot([bbox[0], bbox[0]], [bbox[1], bbox[3]], 'r-')
-    # plt.plot([bbox[2], bbox[2]], [bbox[1], bbox[3]], 'r-')
-    # plt.plot([bbox[0], bbox[2]], [bbox[1], bbox[1]], 'r-')
-    # plt.plot([bbox[0], bbox[2]], [bbox[3], bbox[3]], 'r-')
-    # plt.show()
+    location = geolocator.geocode(airport)
+    bbox = get_bbox(location.latitude, location.longitude, radius)
 
     api = REST()
-    data = api.states() # TODO fixme to use bounds
-    for flight in data.itertuples():
-        print(flight)
+    data = api.states(bounds=tuple(bbox))
+    return data
 
 def get_bbox(lat, lng, miles):
     # sw, ne
@@ -39,7 +27,7 @@ def get_bbox(lat, lng, miles):
 
     for bearing in bearings:
         destination = geodesic(miles=miles).destination(origin, bearing)
-        coords = destination.latitude, destination.longitude
+        coords = destination.longitude, destination.latitude
         l.extend(coords)
-    # xmin, ymin, xmax, ymax
+
     return l
