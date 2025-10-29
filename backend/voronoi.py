@@ -205,7 +205,7 @@ def bowyer_watson(points):
     return triangulation
 
 
-def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
+def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y):
     """
     Given the Delaunay triangulation of a set of points, create the Voronoi
     diagram formed by the circumcenters and create a JSON object representing
@@ -277,9 +277,9 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
     voronoi_edges = list(set(voronoi_edges))
 
     # Store edges as GeoJSON object
-    voronoi_lines = {"type": "FeatureCollection", "features": []}
+    voronoi_lines = {"type": "FeatureCollection", "lines": [], "seeds": []}
     for edge in voronoi_edges:
-        voronoi_lines["features"].append(
+        voronoi_lines["lines"].append(
             {
                 "type": "Feature",
                 "geometry": {
@@ -292,6 +292,19 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                 "properties": {},
             }
         )
+    # Store seeds as GeoJSON points
+    for seed in seeds:
+        voronoi_lines["seeds"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [seed[0], seed[1]],
+                },
+                "properties": {"is_seed": True},
+            }
+        )
+
     voronoi_obj = json.dumps(voronoi_lines)
     return voronoi_obj
 
@@ -309,7 +322,7 @@ def voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
 
 seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
 triangles = bowyer_watson(seeds)
-polygons = voronoi_from_triangulation(triangles, 0, 0, 40, 40)
-# Pretty print each feature on a new line
-for feature in json.loads(polygons)["features"]:
-    print(feature)
+polygons = voronoi_from_triangulation(seeds, triangles, 0, 0, 40, 40)
+# Pretty print each line on a new line
+for line in json.loads(polygons)["lines"]:
+    print(line)

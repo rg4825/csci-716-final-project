@@ -17,6 +17,10 @@ module.exports = {
         source: '/api/voronoi/2d',
         destination: 'http://backend:8000/voronoi/2d',
       },
+      {
+        source: '/api/voronoi/stream',
+        destination: 'http://backend:8000/voronoi/stream',
+      }
     ];
   },
 };
