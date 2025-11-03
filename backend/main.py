@@ -1,7 +1,7 @@
 # file:         main.py
 # description:  the main script file
 
-from open_sky import get_flights, get_flight_trajectories
+from open_sky import get_flights_airport, get_flight_trajectories
 
 
 def test_ga():
@@ -45,7 +45,7 @@ def test_ga():
 
 
 def test_open_sky():
-    data = get_flights(airport="Akron Canton Regional Airport", radius=10)
+    data = get_flights_airport(airport="Akron Canton Regional Airport", radius=10)
     for flight in data.itertuples():
         print(flight)
     print()
