@@ -1,7 +1,10 @@
 # file:         main.py
 # description:  the main script file
 
+import numpy as np
+
 from open_sky import get_flights_airport, get_flight_trajectories
+from genetic_algorithm import Organism, Population
 
 
 def test_ga():
@@ -30,10 +33,44 @@ def test_ga():
     def to_string(organism):
         return f"\n\tchromosomes: {''.join(organism.chromosomes)}\n\tfitness score = {organism.fitness}"
 
+    def reproduce_func(o1, o2, crossover=0.80):
+        child_chromosome = []
+        rng = np.random.default_rng()
+
+        for gene1, gene2 in zip(o1.chromosomes, o2.chromosomes):
+            p = rng.random()
+
+            if p < crossover / 2:
+                child_chromosome.append(gene1)
+                continue
+
+            elif p < crossover:
+                child_chromosome.append(gene2)
+                continue
+
+            child_chromosome.append(np.random.choice(genome))
+
+        return Organism(child_chromosome, o1.fitness_func, to_string=o1.to_string)
+
+    def create_random_organism():
+        chromosomes = []
+        rng = np.random.default_rng()
+
+        for i in range(chromosome_len):
+            chromosomes.append(rng.choice(genome))
+
+        return Organism(
+            chromosomes,
+            fitness_func,
+            to_string=to_string,
+        )
+
+
     population = Population(
-        genome,
         chromosome_len,
         fitness_func,
+        reproduce_func,
+        create_random_organism,
         threshold=0.999,
         generation_size=2000,
         num_generations=0,
@@ -57,7 +94,7 @@ def test_open_sky():
 
 
 def main():
-    test_open_sky()
+    test_ga()
 
 
 if __name__ == "__main__":
