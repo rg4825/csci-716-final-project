@@ -111,7 +111,7 @@ class Population:
         """
         Given the current generation, evolve the population until either the threshold is hit or the maximum number
         of generations is hit.
-        :return:    the most fit organism from evolving this papulation.
+        :return:    the most fit organism from evolving this population.
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
@@ -160,7 +160,7 @@ class Population:
 
             if fittest_organism.fitness >= self.threshold:
                 print(f"fitness >= threshold {self.threshold}, stopping...")
-                return fittest_organism
+                break
 
         return fittest_organism
 
