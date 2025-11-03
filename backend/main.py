@@ -55,6 +55,7 @@ def test_open_sky():
             print(i)
         print()
 
+
 def main():
     test_open_sky()
 
