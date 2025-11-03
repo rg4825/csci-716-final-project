@@ -107,11 +107,11 @@ class Population:
         self.current_generation_index = 0
         self.current_generation = []
 
-    def fully_evolve_population(self):
+    def fully_evolve_population(self, prog_bar=True):
         """
         Given the current generation, evolve the population until either the threshold is hit or the maximum number
         of generations is hit.
-        :return:    the most fit organism from evolving this population.
+        :param prog_bar:    boolean for if progress bar should be shown per generation
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
@@ -122,7 +122,7 @@ class Population:
         if self.num_generations == 0:
             while True:
                 self.current_generation_index += 1
-                fittest_organism = self.advance_one_generation()
+                fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
                 print(f"fittest organism: {fittest_organism}")
 
                 if fittest_organism == prev_fittest_organism:
@@ -143,7 +143,7 @@ class Population:
 
         for _ in range(self.num_generations):
             self.current_generation_index += 1
-            fittest_organism = self.advance_one_generation()
+            fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
             print(f"fittest organism: {fittest_organism}")
 
             if fittest_organism == prev_fittest_organism:
@@ -164,10 +164,11 @@ class Population:
 
         return fittest_organism
 
-    def fully_evolve_population_generator(self):
+    def fully_evolve_population_generator(self, prog_bar=False):
         """
         Given the current generation, evolve the population until either the threshold is hit or the maximum number
         of generations is hit. Yields the fittest organism of each generation and the fittest overall at the end.
+        :param prog_bar:    boolean for if progress bar should be shown per generation
         """
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
@@ -178,7 +179,7 @@ class Population:
         if self.num_generations == 0:
             while True:
                 self.current_generation_index += 1
-                fittest_organism = self.advance_one_generation()
+                fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
                 print(f"fittest organism: {fittest_organism}")
                 yield fittest_organism
 
@@ -200,7 +201,7 @@ class Population:
 
         for _ in range(self.num_generations):
             self.current_generation_index += 1
-            fittest_organism = self.advance_one_generation()
+            fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
             print(f"fittest organism: {fittest_organism}")
             yield fittest_organism
 
@@ -222,11 +223,12 @@ class Population:
 
         yield fittest_organism
 
-    def advance_one_generation(self):
+    def advance_one_generation(self, prog_bar=True):
         """
         Advances the population by one generation using the roulette wheel method. Changes the state of this
         Population object. Assumes that the current generation is already sorted by fitness.
-        :return:    the fittest Organism from this generation
+        :param prog_bar:    boolean for if progress bar should be shown
+        :return:            the fittest Organism from this generation
         """
         new_generation = []
         rng = np.random.default_rng()
@@ -234,14 +236,21 @@ class Population:
         total_fitness = sum([o.fitness for o in self.current_generation])
         probs = [o.fitness / total_fitness for o in self.current_generation]
 
-        for _ in tqdm(
-            range(self.generation_size),
-            desc=f"Generation {self.current_generation_index}",
-        ):
-            p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
-            p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
-            child = p1.reproduce(p2)
-            new_generation.append(child)
+        if prog_bar:
+            for _ in tqdm(
+                    range(self.generation_size),
+                    desc=f"Generation {self.current_generation_index}",
+            ):
+                p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
+                p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
+                child = p1.reproduce(p2)
+                new_generation.append(child)
+        else:
+            for _ in range(self.generation_size):
+                p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
+                p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
+                child = p1.reproduce(p2)
+                new_generation.append(child)
 
         self.current_generation = sorted(
             new_generation, key=lambda o: o.fitness, reverse=True
