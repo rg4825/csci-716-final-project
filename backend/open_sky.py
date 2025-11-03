@@ -19,9 +19,17 @@ def get_flights_airport(airport=DEFAULT_AIRPORT, radius=50):
     :param radius:  the (square) radius around that airport to get the flights from
     :return:        dataframe containing flight information
     """
+    lat, lng = get_lat_lng(airport)
+    return get_flights_lat_lng(lat, lng, radius)
+
+
+def get_lat_lng(airport):
+    """
+    :return:    the latitude, longitude of a given airport
+    """
     row = AIRPORTS_DF.loc[AIRPORTS_DF["name"] == airport]
     lat, lng = row.iloc[0]["latitude_deg"], row.iloc[0]["longitude_deg"]
-    return get_flights_lat_lng(lat, lng, radius)
+    return lat, lng
 
 
 def get_flights_lat_lng(lat, lng, radius=50):
