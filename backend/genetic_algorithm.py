@@ -12,46 +12,16 @@ class Organism:
     for selecting the next generation.
     """
 
-    def __init__(self, chromosomes, fitness_func, genome, to_string=None):
+    def __init__(self, chromosomes, fitness_func, to_string=None):
         """
         :param chromosomes:     a list of tokens that can be considered this organism's "gene sequence"
         :param fitness_func:    the function used to evaluate how "fit" this organism is
-        :param genome:          a list of all valid genetic bases
         """
         self.chromosomes = chromosomes
         self.fitness_func = fitness_func
-        self.genome = genome
         self.to_string = to_string
 
         self.fitness = self.fitness_func(self.chromosomes)
-
-    def reproduce(self, other, crossover=0.80):
-        """
-        Creates a new organism using the chromosomes of each parent, with a chance of mutation equal to
-        1-crossover.
-        :param other:       the other organism for genes to passed on
-        :param crossover:   the chance of a gene to be taken from a parent
-        :return:            a new organism inheriting traits from both parents
-        """
-        child_chromosome = []
-        rng = np.random.default_rng()
-
-        for gene1, gene2 in zip(self.chromosomes, other.chromosomes):
-            p = rng.random()
-
-            if p < crossover / 2:
-                child_chromosome.append(gene1)
-                continue
-
-            elif p < crossover:
-                child_chromosome.append(gene2)
-                continue
-
-            child_chromosome.append(np.random.choice(self.genome))
-
-        return Organism(
-            child_chromosome, self.fitness_func, self.genome, to_string=self.to_string
-        )
 
     def __str__(self):
         if self.to_string is None:
@@ -70,9 +40,10 @@ class Population:
 
     def __init__(
         self,
-        genome,
         chromosome_len,
         fitness_func,
+        reproduce_func,
+        generator_func,
         generation_size=500,
         num_generations=200,
         threshold=0.999,
@@ -80,10 +51,11 @@ class Population:
         organism_to_string=None,
     ):
         """
-        :param genome:              a list of all valid genetic bases
         :param chromosome_len:      the length of the target chromosome
         :param fitness_func:        the function used to evaluate how "fit" this organism is, the greater the fitness
                                     the better
+        :param reproduce_func       the function used by all organisms to reproduce
+        :param generator_func       the function used to create a new organism
         :param generation_size:     (opt.) number of organisms per generation, default 500
         :param num_generations:     (opt.) the maximum number of generations, beyond initialization, default 200
         :param threshold:           (opt.) if the fitness is beyond this threshold for an organism, stop evolution,
@@ -95,10 +67,11 @@ class Population:
         :param organism_to_string:  (opt.) function that should be used by the Organism object as its __str__() method,
                                     default None
         """
-        self.genome = genome
         self.chromosome_len = chromosome_len
         self.generation_size = generation_size
         self.fitness_func = fitness_func
+        self.reproduce_func = reproduce_func
+        self.generator_func = generator_func
         self.num_generations = num_generations
         self.threshold = threshold
         self.patience = patience
@@ -243,13 +216,13 @@ class Population:
             ):
                 p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
                 p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
-                child = p1.reproduce(p2)
+                child = self.reproduce_func(p1, p2)
                 new_generation.append(child)
         else:
             for _ in range(self.generation_size):
                 p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
                 p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
-                child = p1.reproduce(p2)
+                child = self.reproduce_func(p1, p2)
                 new_generation.append(child)
 
         self.current_generation = sorted(
@@ -266,26 +239,9 @@ class Population:
             return
 
         for _ in range(self.generation_size):
-            organism = self.create_random_organism()
+            organism = self.generator_func()
             self.current_generation.append(organism)
 
         self.current_generation = sorted(
             self.current_generation, key=lambda o: o.fitness, reverse=True
-        )
-
-    def create_random_organism(self):
-        """
-        :return:    An Organism with a random set of chromosomes.
-        """
-        chromosomes = []
-        rng = np.random.default_rng()
-
-        for i in range(self.chromosome_len):
-            chromosomes.append(rng.choice(self.genome))
-
-        return Organism(
-            chromosomes,
-            self.fitness_func,
-            self.genome,
-            to_string=self.organism_to_string,
         )
