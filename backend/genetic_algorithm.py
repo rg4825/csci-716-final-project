@@ -164,6 +164,64 @@ class Population:
 
         return fittest_organism
 
+    def fully_evolve_population_generator(self):
+        """
+        Given the current generation, evolve the population until either the threshold is hit or the maximum number
+        of generations is hit. Yields the fittest organism of each generation and the fittest overall at the end.
+        """
+        self.initialize_generation()  # this is considered generation 0
+        fittest_organism = self.current_generation[0]
+
+        prev_fittest_organism = self.current_generation[0]
+        patience_counter = 0
+
+        if self.num_generations == 0:
+            while True:
+                self.current_generation_index += 1
+                fittest_organism = self.advance_one_generation()
+                print(f"fittest organism: {fittest_organism}")
+                yield fittest_organism
+
+                if fittest_organism == prev_fittest_organism:
+                    patience_counter += 1
+                else:
+                    patience_counter = 0
+                    prev_fittest_organism = fittest_organism
+
+                if patience_counter >= self.patience != 0:
+                    print(
+                        f"fitness has not improved in {self.patience} iterations, stopping early..."
+                    )
+                    yield fittest_organism
+
+                if fittest_organism.fitness >= self.threshold:
+                    print(f"fitness >= threshold {self.threshold}, stopping...")
+                    yield fittest_organism
+
+        for _ in range(self.num_generations):
+            self.current_generation_index += 1
+            fittest_organism = self.advance_one_generation()
+            print(f"fittest organism: {fittest_organism}")
+            yield fittest_organism
+
+            if fittest_organism == prev_fittest_organism:
+                patience_counter += 1
+            else:
+                patience_counter = 0
+                prev_fittest_organism = fittest_organism
+
+            if patience_counter >= self.patience != 0:
+                print(
+                    f"fitness has not improved in {self.patience} iterations, stopping early..."
+                )
+                break
+
+            if fittest_organism.fitness >= self.threshold:
+                print(f"fitness >= threshold {self.threshold}, stopping...")
+                break
+
+        yield fittest_organism
+
     def advance_one_generation(self):
         """
         Advances the population by one generation using the roulette wheel method. Changes the state of this
