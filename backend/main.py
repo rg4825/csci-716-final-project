@@ -161,6 +161,10 @@ def flight_ga():
 
     def reproduce_func(o1, o2, mutation=0.20):
         child_chromosomes = np.array([_crossover_mutate_chromosomes(chrom1, chrom2, mutation) for chrom1, chrom2 in zip(o1.chromosomes, o2.chromosomes)], dtype=np.dtypes.StringDType)
+        child_chromosomes = np.array([_decode_chromosome(row) for row in child_chromosomes])
+        child_chromosomes = child_chromosomes[child_chromosomes[:,0].argsort()]
+        child_chromosomes = np.array([_encode_chromosome(row[0], row[1]) for row in child_chromosomes], dtype=np.dtypes.StringDType)
+
         return Organism(child_chromosomes, o1.fitness_func, to_string=o1.to_string)
 
 
@@ -182,9 +186,13 @@ def flight_ga():
         )
 
     o1 = create_random_organism()
+    print(f"o1:{o1}")
+
     o2 = create_random_organism()
+    print(f"o2:{o2}")
+
     child = reproduce_func(o1, o2)
-    print(child)
+    print(f"child:{child}")
 
 
 def main():
