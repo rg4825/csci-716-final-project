@@ -120,7 +120,7 @@ def flight_ga():
     def to_string(organism):
         s = "\n\tchromosomes:"
         for chromosome in organism.chromosomes:
-            s += f"\n\t\t({_decode_chromosome(chromosome)})"
+            s += f"\n\t\t{_decode_chromosome(chromosome)}"
         s += f"\n\tfitness: {organism.fitness}"
 
         return s
