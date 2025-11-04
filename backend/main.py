@@ -125,8 +125,44 @@ def flight_ga():
 
         return s
 
-    def reproduce_func(o1, o2, crossover=0.80):
-        pass
+    def _crossover_mutate_chromosomes(chromosome1, chromosome2, mutation=0.20):
+        child_chromosome = np.zeros(2, dtype=np.dtypes.StringDType)
+        rng = np.random.default_rng()
+
+        for i in range(len(chromosome1[0])):
+            x1, y1 = chromosome1[0][i], chromosome1[1][i]
+            x2, y2 = chromosome2[0][i], chromosome2[1][i]
+
+            px = rng.random()
+            py = rng.random()
+            px_mutate = rng.random()
+            py_mutate = rng.random()
+
+            if px < 0.50:
+                child_chromosome[0] += x1
+            else:
+                child_chromosome[0] += x2
+
+            if py < 0.50:
+                child_chromosome[1] += y1
+            else:
+                child_chromosome[1] += y2
+
+            if px_mutate < mutation:
+                mutate_val = (int(child_chromosome[0][i]) + 1) % 2
+                child_chromosome = child_chromosome[0][:-1] + str(mutate_val)
+
+            if py_mutate < mutation:
+                mutate_val = (int(child_chromosome[1][i]) + 1) % 2
+                child_chromosome = child_chromosome[1][:-1] + str(mutate_val)
+
+        return child_chromosome
+
+
+    def reproduce_func(o1, o2, mutation=0.20):
+        child_chromosomes = np.array([_crossover_mutate_chromosomes(chrom1, chrom2, mutation) for chrom1, chrom2 in zip(o1.chromosomes, o2.chromosomes)], dtype=np.dtypes.StringDType)
+        return Organism(child_chromosomes, o1.fitness_func, to_string=o1.to_string)
+
 
     def create_random_organism():
         chromosomes = np.zeros((cells, 2))
