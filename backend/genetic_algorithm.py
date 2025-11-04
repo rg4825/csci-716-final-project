@@ -211,8 +211,8 @@ class Population:
 
         if prog_bar:
             for _ in tqdm(
-                    range(self.generation_size),
-                    desc=f"Generation {self.current_generation_index}",
+                range(self.generation_size),
+                desc=f"Generation {self.current_generation_index}",
             ):
                 p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
                 p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]

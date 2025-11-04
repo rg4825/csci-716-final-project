@@ -140,6 +140,7 @@ class Circle:
 # for line in json.loads(polygons)["lines"]:
 #     print(line)
 
+
 def compute_voronoi(seeds, min_x, min_y, max_x, max_y):
     """
     Given a set of seed points and a set of bounds, create a voronoi diagram.
