@@ -104,15 +104,13 @@ def flight_ga():
 
     def _encode_chromosome(x, y):
         norm_x, norm_y = (x - x_min) / x_diff, (y - y_min) / y_diff  # normalizes to [0, 1]
-        enc_x, enc_y = np.round(np.multiply(norm_x, MAX_32)).astype(np.uint32), np.round(
-            np.multiply(norm_y, MAX_32)).astype(np.uint32)  # uniformly maps to uint32, a small amount of precision loss
-        x_bin, y_bin = np.binary_repr(enc_x, width=32), np.binary_repr(enc_y,
-                                                                       width=32)  # 32 bit binary representation of uint32
+        enc_x, enc_y = np.round(np.multiply(norm_x, MAX_32)).astype(np.uint32), np.round(np.multiply(norm_y, MAX_32)).astype(np.uint32)  # uniformly maps to uint32, a small amount of precision loss
+        x_bin, y_bin = np.binary_repr(enc_x, width=32), np.binary_repr(enc_y, width=32)  # 32 bit binary representation of uint32
         return x_bin, y_bin
 
     def _decode_chromosome(chromosome):
         enc_x, enc_y = np.uint32(int(chromosome[0], 2)), np.uint32(int(chromosome[1], 2))
-        norm_x, norm_y = np.divide(enc_x, MAX_32), np.divide(enc_x, MAX_32)
+        norm_x, norm_y = np.divide(enc_x, MAX_32), np.divide(enc_y, MAX_32)
         x, y = x_min + norm_x * x_diff, y_min + norm_y * y_diff
         return float(x), float(y)
 
@@ -127,16 +125,19 @@ def flight_ga():
 
         return s
 
-    def reproduce_func():
+    def reproduce_func(o1, o2, crossover=0.80):
         pass
 
     def create_random_organism():
-        chromosomes = []
+        chromosomes = np.zeros((cells, 2))
         rng = np.random.default_rng()
 
-        for _ in range(cells):
+        for i in range(cells):
             x, y = rng.uniform(x_min, x_max), rng.uniform(y_min, y_max)
-            chromosomes.append(tuple(_encode_chromosome(x, y)))
+            chromosomes[i] = x, y
+
+        chromosomes = chromosomes[chromosomes[:,0].argsort()]
+        chromosomes = np.array([_encode_chromosome(row[0], row[1]) for row in chromosomes], dtype=np.dtypes.StringDType)
 
         return Organism(
             chromosomes,
@@ -149,7 +150,7 @@ def flight_ga():
 
 
 def main():
-    test_ga()
+    flight_ga()
 
 
 if __name__ == "__main__":
