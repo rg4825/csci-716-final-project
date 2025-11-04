@@ -44,6 +44,7 @@ class Population:
         fitness_func,
         reproduce_func,
         generator_func,
+        crossover=0.80,
         generation_size=500,
         num_generations=200,
         threshold=0.999,
@@ -56,6 +57,7 @@ class Population:
                                     the better
         :param reproduce_func       the function used by all organisms to reproduce
         :param generator_func       the function used to create a new organism
+        :param crossover            (opt.) the probability that crossover will occur, default 0.80
         :param generation_size:     (opt.) number of organisms per generation, default 500
         :param num_generations:     (opt.) the maximum number of generations, beyond initialization, default 200
         :param threshold:           (opt.) if the fitness is beyond this threshold for an organism, stop evolution,
@@ -72,6 +74,7 @@ class Population:
         self.fitness_func = fitness_func
         self.reproduce_func = reproduce_func
         self.generator_func = generator_func
+        self.crossover = crossover
         self.num_generations = num_generations
         self.threshold = threshold
         self.patience = patience
@@ -220,7 +223,14 @@ class Population:
                 new_generation.append(child)
         else:
             for _ in range(self.generation_size):
+                rng = np.random.default_rng()
+                p = rng.random()
                 p1 = self.current_generation[rng.choice(self.generation_size, p=probs)]
+
+                if p > self.crossover:
+                    new_generation.append(p1)
+                    continue
+
                 p2 = self.current_generation[rng.choice(self.generation_size, p=probs)]
                 child = self.reproduce_func(p1, p2)
                 new_generation.append(child)
