@@ -6,6 +6,7 @@ import numpy as np
 from open_sky import get_flights_airport, get_flight_trajectories
 from genetic_algorithm import Organism, Population
 
+MAX_32 = 2 ** 32 - 1
 
 def test_ga():
     import string
@@ -91,15 +92,6 @@ def test_open_sky():
             print(i)
         print()
 
-
-def _encode_chromosome(x, y, x_min, y_min, x_max, y_max):
-    norm_x, norm_y = (x - x_min) / (x_max - x_min), (y - y_min) / (y_max - y_min)   # normalizes to [0, 1]
-    enc_x, enc_y = np.round(np.multiply(norm_x, 2 ** 32 - 1)).astype(np.uint32), np.round(
-        np.multiply(norm_y, 2 ** 32 - 1)).astype(np.uint32)  # uniformly maps to uint32
-    x_bin, y_bin = np.binary_repr(enc_x, width=32), np.binary_repr(enc_y, width=32)  # 32 bit binary representation of uint32
-    return x_bin, y_bin
-
-
 def flight_ga():
     airport = "Dallas Fort Worth International Airport"
     radius = 50
@@ -107,14 +99,30 @@ def flight_ga():
 
     flights, bbox = get_flights_airport(airport, radius)
     y_min, x_min, y_max, x_max = bbox[0], bbox[1], bbox[2], bbox[3]
+    x_diff = x_max - x_min
+    y_diff = y_max - y_min
 
-    def fitness_func():
-        pass
+    def _encode_chromosome(x, y):
+        norm_x, norm_y = (x - x_min) / x_diff, (y - y_min) / y_diff  # normalizes to [0, 1]
+        enc_x, enc_y = np.round(np.multiply(norm_x, MAX_32)).astype(np.uint32), np.round(
+            np.multiply(norm_y, MAX_32)).astype(np.uint32)  # uniformly maps to uint32, a small amount of precision loss
+        x_bin, y_bin = np.binary_repr(enc_x, width=32), np.binary_repr(enc_y,
+                                                                       width=32)  # 32 bit binary representation of uint32
+        return x_bin, y_bin
+
+    def _decode_chromosome(chromosome):
+        enc_x, enc_y = np.uint32(int(chromosome[0], 2)), np.uint32(int(chromosome[1], 2))
+        norm_x, norm_y = np.divide(enc_x, MAX_32), np.divide(enc_x, MAX_32)
+        x, y = x_min + norm_x * x_diff, y_min + norm_y * y_diff
+        return float(x), float(y)
+
+    def fitness_func(chromosomes):
+        return 0.0
 
     def to_string(organism):
         s = "\n\tchromosomes:"
-        for pair in organism.chromosomes:
-            s += f"\n\t\t({pair})"
+        for chromosome in organism.chromosomes:
+            s += f"\n\t\t({_decode_chromosome(chromosome)})"
         s += f"\n\tfitness: {organism.fitness}"
 
         return s
@@ -128,13 +136,16 @@ def flight_ga():
 
         for _ in range(cells):
             x, y = rng.uniform(x_min, x_max), rng.uniform(y_min, y_max)
-            chromosomes.append(tuple(_encode_chromosome(x, y, x_min, y_min, x_max, y_max)))
+            chromosomes.append(tuple(_encode_chromosome(x, y)))
 
         return Organism(
             chromosomes,
             fitness_func,
             to_string=to_string,
         )
+
+    o = create_random_organism()
+    print(o)
 
 
 def main():
