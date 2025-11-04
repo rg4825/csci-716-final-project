@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from open_sky import get_flights_airport, get_flight_trajectories, get_lat_lng
+from open_sky import get_flights_airport, get_flight_trajectories
 from genetic_algorithm import Organism, Population
 
 
@@ -92,6 +92,14 @@ def test_open_sky():
         print()
 
 
+def _encode_chromosome(x, y, x_min, y_min, x_max, y_max):
+    norm_x, norm_y = (x - x_min) / (x_max - x_min), (y - y_min) / (y_max - y_min)   # normalizes to [0, 1]
+    enc_x, enc_y = np.round(np.multiply(norm_x, 2 ** 32 - 1)).astype(np.uint32), np.round(
+        np.multiply(norm_y, 2 ** 32 - 1)).astype(np.uint32)  # uniformly maps to uint32
+    x_bin, y_bin = np.binary_repr(enc_x, width=32), np.binary_repr(enc_y, width=32)  # 32 bit binary representation of uint32
+    return x_bin, y_bin
+
+
 def flight_ga():
     airport = "Dallas Fort Worth International Airport"
     radius = 50
@@ -120,7 +128,7 @@ def flight_ga():
 
         for _ in range(cells):
             x, y = rng.uniform(x_min, x_max), rng.uniform(y_min, y_max)
-            chromosomes.append((x, y))
+            chromosomes.append(tuple(_encode_chromosome(x, y, x_min, y_min, x_max, y_max)))
 
         return Organism(
             chromosomes,
