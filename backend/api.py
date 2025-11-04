@@ -47,9 +47,8 @@ def voronoi_endpoint(request: VoronoiRequest):
     seeds = [tuple(seed) for seed in request.seeds]
 
     # Generate Voronoi diagram
-    triangles = bowyer_watson(seeds)
-    polygons = voronoi_from_triangulation(
-        seeds, triangles, request.min_x, request.min_y, request.max_x, request.max_y
+    polygons = compute_voronoi(
+        seeds, request.min_x, request.min_y, request.max_x, request.max_y
     )
 
     return {"voronoi_polygons": polygons}
@@ -63,8 +62,7 @@ def voronoi_2d_endpoint(seeds: str):
     for pair in seeds.split(";"):
         x, y = map(float, pair.split(","))
         seed_list.append((x, y))
-    triangles = bowyer_watson(seed_list)
-    polygons = voronoi_from_triangulation(seed_list, triangles, 0, 0, 400, 400)
+    polygons = compute_voronoi(seed_list, 0, 0, 400, 400)
     return {"voronoi_polygons": polygons}
 
 
@@ -109,8 +107,7 @@ async def generate_voronoi():
     for i in range(10):  # Simulate 10 steps of generation
         # Generate random seeds for demonstration
         seeds = [(random.uniform(0, 100), random.uniform(0, 100)) for _ in range(10)]
-        triangles = bowyer_watson(seeds)
-        polygons = voronoi_from_triangulation(seeds, triangles, 0, 0, 100, 100)
+        polygons = compute_voronoi(seeds, 0, 0, 100, 100)
 
         yield json.dumps({"step": i, "voronoi_polygons": polygons})
         await asyncio.sleep(1)  # Simulate time delay

@@ -133,7 +133,29 @@ class Circle:
         self.radius = radius
 
 
-def find_supertriangle(points):
+# Example usage
+# seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+# polygons = compute_voronoi(seeds, 0, 0, 40, 40)
+# # Pretty print each line on a new line
+# for line in json.loads(polygons)["lines"]:
+#     print(line)
+
+def compute_voronoi(seeds, min_x, min_y, max_x, max_y):
+    """
+    Given a set of seed points and a set of bounds, create a voronoi diagram.
+    :param seeds:   a list of tuples representing x, y coordinates
+    :param min_x:   minimum x coordinate the "infinite edges" can extend out to
+    :param min_y:   maximum x coordinate the "infinite edges" can extend out to
+    :param max_x:   minimum y coordinate the "infinite edges" can extend out to
+    :param max_y:   maximum y coordinate the "infinite edges" can extend out to
+    :return:        geojson representation of the voronoi diagram
+    """
+    triangles = _bowyer_watson(seeds)
+    voronoi_edges = _voronoi_from_triangulation(triangles, min_x, min_y, max_x, max_y)
+    return _store_edges_as_geo_json(seeds, voronoi_edges)
+
+
+def _find_supertriangle(points):
     """
     Finds a supertriangle that surrounds the set of points provided
     Arguments:
@@ -153,7 +175,7 @@ def find_supertriangle(points):
     return Triangle((mid_x - d, mid_y - d), (mid_x, mid_y + d), (mid_x + d, mid_y - d))
 
 
-def bowyer_watson(points):
+def _bowyer_watson(points):
     """
     Finds the Delaunay triangulation for a given set of points using the
     Bowyer-Watson algorithm
@@ -163,7 +185,7 @@ def bowyer_watson(points):
         triangulation: a list of triangles that form the
                        Delaunay triangulation
     """
-    supertriangle = find_supertriangle(points)
+    supertriangle = _find_supertriangle(points)
     triangulation = [supertriangle]
     for point in points:
         bad_triangles = []
@@ -205,11 +227,10 @@ def bowyer_watson(points):
     return triangulation
 
 
-def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y):
+def _voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
     """
     Given the Delaunay triangulation of a set of points, create the Voronoi
-    diagram formed by the circumcenters and create a JSON object representing
-    the edges of the Voronoi diagram
+    diagram formed by the circumcenters.
     Arguments:
         triangulation: a list of triangles that form the
                        Delaunay triangulation
@@ -272,8 +293,15 @@ def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y)
                     voronoi_edges.append(Edge(c1, (x, y)))
 
     voronoi_edges = list(set(voronoi_edges))
+    return voronoi_edges
 
-    # Store edges as GeoJSON object
+
+def _store_edges_as_geo_json(seeds, voronoi_edges):
+    """
+    :param seeds:           a list of tuples representing x, y coordinates
+    :param voronoi_edges:   a list representing all voronoi edges
+    :return:                a geojson object of the edges of the voronoi diagram
+    """
     voronoi_lines = {"type": "FeatureCollection", "lines": [], "seeds": []}
     for edge in voronoi_edges:
         voronoi_lines["lines"].append(
@@ -304,22 +332,3 @@ def voronoi_from_triangulation(seeds, triangulation, min_x, min_y, max_x, max_y)
 
     voronoi_obj = json.dumps(voronoi_lines)
     return voronoi_obj
-
-    """
-    # convert edges to dicts of p1, p2
-    edge_dicts = []
-    for edge in voronoi_edges:
-        edge_dicts.append(
-            {"x1": edge.p1[0], "y1": edge.p1[1], "x2": edge.p2[0], "y2": edge.p2[1]}
-        )
-    voronoi_obj = json.dumps({"edges": edge_dicts})
-    return voronoi_obj
-    """
-
-
-seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
-triangles = bowyer_watson(seeds)
-polygons = voronoi_from_triangulation(seeds, triangles, 0, 0, 40, 40)
-# Pretty print each line on a new line
-for line in json.loads(polygons)["lines"]:
-    print(line)
