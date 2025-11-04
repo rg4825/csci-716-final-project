@@ -103,8 +103,13 @@ def flight_ga():
     def fitness_func():
         pass
 
-    def to_string():
-        pass
+    def to_string(organism):
+        s = "\n\tchromosomes:"
+        for pair in organism.chromosomes:
+            s += f"\n\t\t({pair})"
+        s += f"\n\tfitness: {organism.fitness}"
+
+        return s
 
     def reproduce_func():
         pass
