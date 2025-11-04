@@ -150,11 +150,11 @@ def flight_ga():
 
             if px_mutate < mutation:
                 mutate_val = (int(child_chromosome[0][i]) + 1) % 2
-                child_chromosome = child_chromosome[0][:-1] + str(mutate_val)
+                child_chromosome[0] = child_chromosome[0][:-1] + str(mutate_val)
 
             if py_mutate < mutation:
                 mutate_val = (int(child_chromosome[1][i]) + 1) % 2
-                child_chromosome = child_chromosome[1][:-1] + str(mutate_val)
+                child_chromosome[1] = child_chromosome[1][:-1] + str(mutate_val)
 
         return child_chromosome
 
@@ -181,8 +181,10 @@ def flight_ga():
             to_string=to_string,
         )
 
-    o = create_random_organism()
-    print(o)
+    o1 = create_random_organism()
+    o2 = create_random_organism()
+    child = reproduce_func(o1, o2)
+    print(child)
 
 
 def main():
