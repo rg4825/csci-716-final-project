@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from open_sky import get_flights_airport, get_flight_trajectories
+from open_sky import get_flights_airport, get_flight_trajectories, get_lat_lng
 from genetic_algorithm import Organism, Population
 
 
@@ -65,7 +65,6 @@ def test_ga():
             to_string=to_string,
         )
 
-
     population = Population(
         chromosome_len,
         fitness_func,
@@ -91,6 +90,38 @@ def test_open_sky():
         for i in traj.itertuples():
             print(i)
         print()
+
+
+def flight_ga():
+    airport = "Dallas Fort Worth International Airport"
+    radius = 50
+    cells = 20
+
+    flights, bbox = get_flights_airport(airport, radius)
+    y_min, x_min, y_max, x_max = bbox[0], bbox[1], bbox[2], bbox[3]
+
+    def fitness_func():
+        pass
+
+    def to_string():
+        pass
+
+    def reproduce_func():
+        pass
+
+    def create_random_organism():
+        chromosomes = []
+        rng = np.random.default_rng()
+
+        for _ in range(cells):
+            x, y = rng.uniform(x_min, x_max), rng.uniform(y_min, y_max)
+            chromosomes.append((x, y))
+
+        return Organism(
+            chromosomes,
+            fitness_func,
+            to_string=to_string,
+        )
 
 
 def main():
