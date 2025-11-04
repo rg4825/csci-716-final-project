@@ -34,7 +34,7 @@ def get_lat_lng(airport):
 
 def get_flights_lat_lng(lat, lng, radius=50):
     """
-    ets all flights within a certain radius around some latitude, longitude point.
+    Gets all flights within a certain radius around some latitude, longitude point.
     :param lat:     latitude of the center point
     :param lng:     longitude of the center point
     :param radius:  the (square) radius around that airport to get the flights from
