@@ -4,6 +4,9 @@
 import math
 
 class Vertex:
+    """
+    Class representing DCEL vertices, which store (x, y, z) coordinates
+    """
     def __init__(self, x, y, z):
         self.x = x
         self.y = y
@@ -46,23 +49,99 @@ class HalfEdge:
 class Face:
     def __init__(self, edge):
         self.inc_edge = edge
+        self.circumcenter = None
 
-    def calc_circumcenter(self):
+    def calc_circumcenter(self, radius, center):
         """
         Calculates the circumcenter of a triangular face
+        Args:
+            radius: radius of the sphere the points fall on
+            center: the center of the sphere
         """
-        pass
+        edges = self.get_edges()
+        a = edges[0].org
+        b = edges[1].org
+        c = edges[2].org
+        ab = Vertex(b.x - a.x, b.y - a.y, b.z - a.z)
+        len_ab_sq = (ab.x * ab.x) + (ab.y * ab.y) + (ab.z * ab.z)
+        ac = Vertex(c.x - a.x, c.y - a.y, c.z - a.z)
+        len_ac_sq = (ac.x * ac.x) + (ac.y * ac.y) + (ac.z * ac.z)
+        # cross product of the vectors ab and ac
+        cross_prod1 = Vertex(
+            (ab.y * ac.z) - (ab.z * ac.y),
+            (ab.z * ac.x) - (ab.x * ac.z),
+            (ab.x * ac.y) - (ab.y * ac.x)
+        )
+        len_cross_prod1_sq = (
+            (cross_prod1.x * cross_prod1.x)
+            + (cross_prod1.y * cross_prod1.y)
+            + (cross_prod1.z * cross_prod1.z)
+        )
+        if len_cross_prod1_sq == 0:
+            # division by 0
+            return
+        # cross product of cross_product1 and ab
+        cross_prod2 = Vertex(
+            (cross_prod1.y * ab.z) - (cross_prod1.z * ab.y),
+            (cross_prod1.z * ab.x) - (cross_prod1.x * ab.z),
+            (cross_prod1.x * ab.y) - (cross_prod1.y * ab.x)
+        )
+        # cross product of cross_product1 and ac
+        cross_prod3 = Vertex(
+            (ac.y * cross_prod1.z) - (ac.z * cross_prod1.y),
+            (ac.z * cross_prod1.x) - (ac.x * cross_prod1.z),
+            (ac.x * cross_prod1.y) - (ac.y * cross_prod1.x)
+        )
+        # circumcenter represented as a vertex
+        cc = Vertex(
+            a.x + (((len_ac_sq * cross_prod2.x) + (len_ab_sq * cross_prod3.x)) 
+                    / (2 * len_cross_prod1_sq)),
+            a.y + (((len_ac_sq * cross_prod2.y) + (len_ab_sq * cross_prod3.y)) 
+                    / (2 * len_cross_prod1_sq)),
+            a.z + (((len_ac_sq * cross_prod2.z) + (len_ab_sq * cross_prod3.z)) 
+                    / (2 * len_cross_prod1_sq))
+        )
+        # vector from center to circumcenter as a vertex
+        center_to_cc = Vertex(
+            cc.x - center.x,
+            cc.y - center.y,
+            cc.z - center.z
+        )
+        len_center_to_cc = math.sqrt(
+            (center_to_cc.x * center_to_cc.x)
+            + (center_to_cc.y * center_to_cc.y)
+            + (center_to_cc.z * center_to_cc.z)
+        )
+        # unit vector from center toward circumcenter times radius and adjusted based on center
+        self.circumcenter = Vertex(
+            ((center_to_cc.x / len_center_to_cc) * radius) + center.x,
+            ((center_to_cc.y / len_center_to_cc) * radius) + center.y,
+            ((center_to_cc.z / len_center_to_cc) * radius) + center.z
+        )
 
     def get_edges(self):
-        edges = set()
-        edges.add(self.inc_edge)
+        """
+        Iterates through the edges of the face, starting at the
+        inc_edge, to find all edges
+        Returns:
+            a list of the face's edges
+        """
+        edges = [self.inc_edge]
         he = self.inc_edge.next
-        while he not in edges:
+        while he != self.inc_edge:
             edges.add(he)
             he = he.next
         return edges
 
     def is_visible(self, point):
+        """
+        Determines if this face is visible from a given point
+        Args:
+            point: the point to check visibility for
+        Returns:
+            True if the face is visible from the point,
+            False otherwise
+        """
         a = self.inc_edge.org
         b = self.inc_edge.next.org
         c = self.inc_edge.next.next.org
@@ -79,6 +158,14 @@ class Face:
             return True
 
     def calc_determinant(self, m):
+        """
+        Recursively calculates the determinant of the given nxn matrix
+        (where n=2, 3, or 4)
+        Args:
+            m: the matrix to find the determinant of
+        Returns:
+            the determinant of the matrix
+        """
         if len(m) == 2:
             return (m[0][0] * m[1][1]) - (m[0][1] * m[1][0])
         elif len(m) == 3:
@@ -120,6 +207,9 @@ class Face:
 
 
 class DCEL:
+    """
+    Class representing the doubly-connected edge list
+    """
     def __init__(self):
         self.vertices = set()
         self.half_edges = set()
@@ -127,28 +217,49 @@ class DCEL:
         self.inner_point = None
 
     def create_vertex(self, x, y, z):
+        """
+        Creates a vertex from the given x, y, and z values and
+        adds it to the DCEL vertex set
+        Args:
+            x: the x-coordinate of the new vertex
+            y: the y-coordinate of the new vertex
+            z: the z-coordinate of the new vertex
+        Returns:
+            the new vertex that was created
+        """
         v = Vertex(x, y, z)
         self.vertices.add(v)
         return v
 
     def find_inner_point(self, points):
-      x_sum = 0
-      y_sum = 0
-      z_sum = 0
-      for p in points:
-        x_sum += p[0]
-        y_sum += p[1]
-        z_sum += p[2]
-      length = float(len(points))
-      self.inner_point = Vertex(
-          x_sum / length, y_sum / length, z_sum / length
-      )
+        """
+        Finds a point within the convex hull for properly orienting edges
+        Args:
+            points: the list of points used to form the hull
+        """
+        x_sum = 0
+        y_sum = 0
+        z_sum = 0
+        for p in points:
+            x_sum += p[0]
+            y_sum += p[1]
+            z_sum += p[2]
+        length = float(len(points))
+        self.inner_point = Vertex(
+            x_sum / length, y_sum / length, z_sum / length
+        )
 
     def is_ccw(self, a, b, c):
         """
         Given three vertices a, b, and c of a face, determine
         if they are clockwise or counterclockwise, as determined
         by the right hand rule pointing outside of the hull.
+        Args:
+            a: the first vertex 
+            b: the second vertex
+            c: the third vertex
+        Returns:
+            True if the points are counterclockwise, False otherwise 
         """
         ab = [b.x - a.x, b.y - a.y, b.z - a.z]
         ac = [c.x - a.x, c.y - a.y, c.z - a.z]
@@ -176,6 +287,16 @@ class DCEL:
             return False
 
     def create_face(self, v1, v2, v3):
+        """
+        Creates half-edges and faces from the given vertices,
+        adding them to the DCEL half-edge and face sets
+        Args:
+            v1: the first vertex of the face
+            v2: the second vertex of the face
+            v3: the third vertex of the face
+        Returns:
+            the face and three half-edges created
+        """
         # order v1, v2, v3 so that they are CCW
         if self.inner_point:
             if not self.is_ccw(v1, v2, v3):
@@ -206,6 +327,13 @@ class DCEL:
         return f, he1, he2, he3
 
     def find_twins(self, new_half_edges):
+        """
+        Forms the twin relationships between the half-edges provided
+        and the existing ones
+        Args:   
+            new_half_edges: list of half edges that were created and don't
+            have twins assigned to them yet
+        """
         for he1 in self.half_edges:
             for he2 in new_half_edges:
                 if (
@@ -217,6 +345,15 @@ class DCEL:
                     break
 
     def add_point(self, x, y, z):
+        """
+        If a point isn't already within the existing hull, add the
+        edges/faces needed to add it to the hull and remove any faces
+        that are no longer visible
+        Args:
+            x: the x-coordinate of the point to add
+            y: the y-coordinate of the point to add
+            z: the z-coordinate of the point to add
+        """
         v = self.create_vertex(x, y, z)
         visible_faces = set()
         for face in self.faces:
