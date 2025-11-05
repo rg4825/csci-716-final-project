@@ -19,22 +19,21 @@ def get_flights_airport(airport=DEFAULT_AIRPORT, radius=50):
     :param radius:  the (square) radius around that airport to get the flights from
     :return:        dataframe containing flight information
     """
-    row = AIRPORTS_DF.loc[AIRPORTS_DF["name"] == airport]
-    lat, lng = row.iloc[0]["latitude_deg"], row.iloc[0]["longitude_deg"]
+    lat, lng = _get_lat_lng(airport)
     return get_flights_lat_lng(lat, lng, radius)
 
 
 def get_flights_lat_lng(lat, lng, radius=50):
     """
-    ets all flights within a certain radius around some latitude, longitude point.
+    Gets all flights within a certain radius around some latitude, longitude point.
     :param lat:     latitude of the center point
     :param lng:     longitude of the center point
     :param radius:  the (square) radius around that airport to get the flights from
-    :return:        dataframe containing flight information
+    :return:        dataframe containing flight information, bounding box of the flights
     """
     bbox = _get_bbox(lat, lng, radius)
     data = API.states(bounds=tuple(bbox))
-    return data
+    return data, bbox
 
 
 def get_flight_trajectories(flights):
@@ -62,3 +61,9 @@ def _get_bbox(lat, lng, miles):
         l.extend(coords)
 
     return l
+
+
+def _get_lat_lng(airport):
+    row = AIRPORTS_DF.loc[AIRPORTS_DF["name"] == airport]
+    lat, lng = row.iloc[0]["latitude_deg"], row.iloc[0]["longitude_deg"]
+    return lat, lng
