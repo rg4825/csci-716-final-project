@@ -7,13 +7,16 @@ import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import { geoVoronoi } from "d3-geo-voronoi"; // TODO- Replace with file reading
+import AirportSelector from "./airport_selector"; // Select airport from client side
 
 import styles from "../styles/Home.module.css";
 
 export default function Home() {
+  // Refs for the three visualizations
   const globeRef = useRef(null);
   const mapRef = useRef(null);
   const voronoiRef = useRef(null);
+
 
   useEffect(() => {
     if (globeRef.current) renderMap(globeRef.current, "globe");
@@ -22,10 +25,22 @@ export default function Home() {
   }, []);
 
   return (
-    <main className={styles.container}>
-      <div ref={globeRef} />
-      <div ref={mapRef} />
-      <div ref={voronoiRef} />
+    <header>
+      <title>Airport Voronoi Visualization</title>
+    </header>,
+    <main>
+      <h1 className={styles.title}>Airport Voronoi Visualization</h1>
+      <p className={styles.description}>
+        Select an airport and explore its Voronoi cell on different map projections.
+      </p>
+      <AirportSelector onSelect={(airport) => {
+        console.log("Selected airport:", airport);
+      }}></AirportSelector>
+      <div className={styles.container}>
+        <div ref={globeRef} />
+        <div ref={mapRef} />
+        <div ref={voronoiRef} />
+      </div>
     </main>
   );
 }
