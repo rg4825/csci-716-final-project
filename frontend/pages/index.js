@@ -1,6 +1,7 @@
 // TODO: Implement airport selector, and pass lat/long to backend
 // TODO: Make sure streaming Voronoi works correctly with multiple updates
 // TODO: Implement 3D Voronoi rendering from backend data
+// Test Yield with GA test function (replace fully_evolve_population +_gen)
 
 "use client";
 import { useEffect, useRef } from "react";
