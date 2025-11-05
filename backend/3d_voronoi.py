@@ -3,6 +3,7 @@
 
 from dcel import *
 
+
 def build_initial_tetrahedron(points, dcel):
     """
     Uses the first four points to build the initial tetrahedron
@@ -12,10 +13,10 @@ def build_initial_tetrahedron(points, dcel):
     for p in points:
         v = dcel.create_vertex(p[0], p[1], p[2])
         vertices.append(v)
-    #dcel.find_inner_point()
+    # dcel.find_inner_point()
     dcel.find_inner_point(points)
     for i in range(len(vertices)):
-        tmp = vertices[:i] + vertices[i+1:]
+        tmp = vertices[:i] + vertices[i + 1 :]
         f, he1, he2, he3 = dcel.create_face(tmp[0], tmp[1], tmp[2])
         half_edges.append(he1)
         half_edges.append(he2)

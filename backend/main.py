@@ -1,122 +1,60 @@
 # file:         main.py
-# description:  FastAPI backend for generating 2D Voronoi diagrams using the Bowyer-Watson algorithm.
+# description:  the main script file
 
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import List
-
-from voronoi import *
-
-app = FastAPI()
-
-@app.get("/")
-def test():
-    return {"output": "hello world"}
+from open_sky import get_flights, get_flight_trajectories
 
 
-app = FastAPI()
+def test_ga():
+    import string
+    from genetic_algorithm import Population
 
-class VoronoiRequest(BaseModel):
-    seeds: List[List[float]]  # List of [x, y] coordinates
-    min_x: float = 0
-    min_y: float = 0
-    max_x: float = 100
-    max_y: float = 100
+    target = list("Hello, Computational Geometry!")
 
-class VoronoiUserInputRequest(BaseModel):
-    airport_code: str
-    radius: float
-    timestamp: str # UTC timestamp
-    num_seeds: int
-
-    num_generations: int
-    generation_size: int
-    crossover: float
-    patience: int
-
-# Generate Voronoi diagram from POST request with seeds and bounding box
-# (frontend -> backend -> frontend)
-@app.post("/voronoi/2d")
-def voronoi_endpoint(request: VoronoiRequest):
-    # Convert list of lists to list of tuples
-    seeds = [tuple(seed) for seed in request.seeds]
-    
-    # Generate Voronoi diagram
-    triangles = bowyer_watson(seeds)
-    polygons = voronoi_from_triangulation(
-        seeds,
-        triangles, 
-        request.min_x, 
-        request.min_y, 
-        request.max_x, 
-        request.max_y
+    genome = (
+        list(string.ascii_letters)
+        + list(string.digits)
+        + list(string.punctuation)
+        + [" "]
     )
-    
-    return {"voronoi_polygons": polygons}
+    chromosome_len = len(target)
 
-# Generate Voronoi diagram from GET request (backend -> frontend)
-@app.get("/voronoi/2dstatic")
-def voronoi_2d_endpoint(seeds: str):
-    # Parse the seeds from the query parameter
-    seed_list = []
-    for pair in seeds.split(";"):
-        x, y = map(float, pair.split(","))
-        seed_list.append((x, y))
-    triangles = bowyer_watson(seed_list)
-    polygons = voronoi_from_triangulation(seed_list, triangles, 0, 0, 400, 400)
-    return {"voronoi_polygons": polygons}
+    def fitness_func(chromosomes):
+        char_correct = 0
+        for target_gene, chromosome_gene in zip(target, chromosomes):
+            if target_gene == chromosome_gene:
+                char_correct += 1
 
-# Send the user input to the backend and get the Voronoi diagram
-# Voronoi user input parameters:
-# - Airport Code
-# - Radius (in km)
-# - Start date (TODO: format?)
-# - End date
-# - Number of seeds
-#
-# Genetic algorithm parameters:
-# - Number of generations
-# - Generation size
-# - Crossover
-# - Patience
-@app.post("/voronoi/userinput")
-def voronoi_user_input(request: VoronoiUserInputRequest):
-    # Extract user input parameters
-    airport_code = request.airport_code
-    radius = request.radius
-    timestamp = request.timestamp
-    num_seeds = request.num_seeds
+        fitness = char_correct / chromosome_len
+        return fitness
 
-    num_generations = request.num_generations
-    generation_size = request.generation_size
-    crossover = request.crossover
-    patience = request.patience
+    def to_string(organism):
+        return f"\n\tchromosomes: {''.join(organism.chromosomes)}\n\tfitness score = {organism.fitness}"
 
-    # TODO: Implement genetic algorithm for Voronoi diagram generation
+    population = Population(
+        genome,
+        chromosome_len,
+        fitness_func,
+        threshold=0.999,
+        generation_size=2000,
+        num_generations=0,
+        organism_to_string=to_string,
+        patience=0,
+    )
+    fittest = population.fully_evolve_population()
+    print(f"{fittest}")
 
-    return {"message": "Voronoi diagram generation started"}
 
-# Stream Voronoi diagrams over time using StreamingResponse
-async def generate_voronoi():
-    # Example: Stream Voronoi diagrams over time
-    import asyncio
-    import json
-    import random
+def main():
+    data = get_flights(airport="Akron Canton Regional Airport", radius=10)
+    for flight in data.itertuples():
+        print(flight)
+    print()
+    trajectories = get_flight_trajectories(data)
+    for traj in trajectories:
+        for i in traj.itertuples():
+            print(i)
+        print()
 
-    for i in range(10):  # Simulate 10 steps of generation
-        # Generate random seeds for demonstration
-        seeds = [(random.uniform(0, 100), random.uniform(0, 100)) for _ in range(10)]
-        triangles = bowyer_watson(seeds)
-        polygons = voronoi_from_triangulation(seeds, triangles, 0, 0, 100, 100)
 
-        yield json.dumps({"step": i, "voronoi_polygons": polygons})
-        await asyncio.sleep(1)  # Simulate time delay
-
-# Stream the genetic algorithm output to the frontend
-@app.get("/voronoi/stream")
-async def voronoi_stream():
-    async def event_generator():
-        async for chunk in generate_voronoi():
-            yield f"data: {chunk}\n\n"  # SSE format requires 'data:' prefix and double newline
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+if __name__ == "__main__":
+    main()
