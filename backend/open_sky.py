@@ -12,27 +12,36 @@ AIRPORTS_DF = pd.read_csv("../common/data/airports.csv")
 API = REST()
 
 
-def get_flights(airport=DEFAULT_AIRPORT, radius=50):
+def get_flights_airport(airport=DEFAULT_AIRPORT, radius=50):
     """
-    TODO finish this
-    :param airport:
-    :param radius:
-    :return:
+    Gets all flights within a certain radius around some airport.
+    :param airport: the official name of some airport
+    :param radius:  the (square) radius around that airport to get the flights from
+    :return:        dataframe containing flight information
     """
     row = AIRPORTS_DF.loc[AIRPORTS_DF["name"] == airport]
     lat, lng = row.iloc[0]["latitude_deg"], row.iloc[0]["longitude_deg"]
-    bbox = _get_bbox(lat, lng, radius)
+    return get_flights_lat_lng(lat, lng, radius)
 
+
+def get_flights_lat_lng(lat, lng, radius=50):
+    """
+    ets all flights within a certain radius around some latitude, longitude point.
+    :param lat:     latitude of the center point
+    :param lng:     longitude of the center point
+    :param radius:  the (square) radius around that airport to get the flights from
+    :return:        dataframe containing flight information
+    """
+    bbox = _get_bbox(lat, lng, radius)
     data = API.states(bounds=tuple(bbox))
     return data
 
 
 def get_flight_trajectories(flights):
     """
-    TODO finish this
-    :param flights:
-    :param timestamp:
-    :return:
+    Gets the trajectory for all flights given.
+    :param flights:     dataframe of flights
+    :return:            list of dataframes, one per flight
     """
     trajectories = []
     for flight in flights.itertuples():
