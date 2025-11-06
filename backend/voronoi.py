@@ -6,7 +6,7 @@ Description:    implementation of the Bowyer-Watson algorithm to create a
 """
 
 import math, json
-
+from scipy.spatial import KDTree 
 
 class Edge:
     def __init__(self, p1, p2):
@@ -38,6 +38,9 @@ class Edge:
 
     def __hash__(self):
         return hash((self.p1, self.p2))
+    
+    def __repr__(self):
+        return f'Edge({self.p1}, {self.p2})'
 
 
 class Triangle:
@@ -132,7 +135,20 @@ class Circle:
         self.center = center
         self.radius = radius
 
+class Cell:
+    """
+    Class representing a cell of the Voronoi diagram, which stores the seed
+    point and set of edges that form the cell.
+    """
+    def __init__(self, seed):
+        self.seed = seed
+        self.edges = set()
 
+    def __eq__(self, other):
+        if not isinstance(other, Cell):
+            return False
+        return self.seed == other.seed
+    
 # Example usage
 # seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
 # polygons = compute_voronoi(seeds, 0, 0, 40, 40)
@@ -233,6 +249,7 @@ def _voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
     Given the Delaunay triangulation of a set of points, create the Voronoi
     diagram formed by the circumcenters.
     Arguments:
+        points: original list of seed points
         triangulation: a list of triangles that form the
                        Delaunay triangulation
         min_x: minimum x coordinate the "infinite edges" can extend out to
@@ -292,9 +309,8 @@ def _voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
                     b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
                     x = (y - b) / edge.perp_slope
                     voronoi_edges.append(Edge(c1, (x, y)))
-
     voronoi_edges = list(set(voronoi_edges))
-    return voronoi_edges
+    return voronoi_edges    
 
 
 def _store_edges_as_geo_json(seeds, voronoi_edges):
@@ -333,3 +349,105 @@ def _store_edges_as_geo_json(seeds, voronoi_edges):
 
     voronoi_obj = json.dumps(voronoi_lines)
     return voronoi_obj
+
+
+def _build_voronoi_tree(points, triangulation, min_x, min_y, max_x, max_y):
+    """
+    Alternative to _voronoi_from_triangulation that uses the triangulation
+    and bounding box to create a KD tree storing Voronoi edges for each
+    seed point.
+
+    Arguments:
+        triangulation: a list of triangles that form the
+                       Delaunay triangulation
+        min_x: minimum x coordinate the "infinite edges" can extend out to
+        min_y: minimum y coordinate the "infinite edges" can extend out to
+        max_x: maximum x coordinate the "infinite edges" can extend out to
+        max_y: maximum y coordinate the "infinite edges" can extend out to
+    Returns:
+        KD Tree of seed points
+        dictionary of seed points and Voronoi edges
+    """
+    voronoi_edges = {}
+    for point in points:
+        voronoi_edges[point] = Cell(point)
+    for tri1 in triangulation:
+        c1 = tri1.find_circumcenter()
+        for edge in tri1.edges:
+            edge_found = False
+            for tri2 in triangulation:
+                if tri1 == tri2:
+                    continue
+                if edge in tri2.edges:
+                    c2 = tri2.find_circumcenter()
+                    c1c2 = Edge(c1, c2)
+                    voronoi_edges[edge.p1].edges.add(c1c2)
+                    voronoi_edges[edge.p2].edges.add(c1c2)
+            if not edge_found:
+                other_edges = [e for e in tri1.edges if e != edge]
+                if other_edges[0].p1 == edge.p1 or other_edges[0].p1 == edge.p2:
+                    vertex = other_edges[0].p2
+                else:
+                    vertex = other_edges[0].p1
+                
+                if edge.perp_slope is None:
+                    if edge.midpoint[1] < vertex[1]:
+                        new_edge = Edge(c1, (c1[0], min_y))
+                        voronoi_edges[edge.p1].edges.add(new_edge)
+                        voronoi_edges[edge.p2].edges.add(new_edge)
+                    else:
+                        new_edge = Edge(c1, (c1[0], max_y))
+                        voronoi_edges[edge.p1].edges.add(new_edge)
+                        voronoi_edges[edge.p2].edges.add(new_edge)
+                elif edge.perp_slope == 0:
+                    if edge.midpoint[0] < vertex[0]:
+                        new_edge = Edge(c1, (min_x, c1[1]))
+                        voronoi_edges[edge.p1].edges.add(new_edge)
+                        voronoi_edges[edge.p2].edges.add(new_edge)
+                    else:
+                        new_edge = Edge(c1, (max_x, c1[1]))
+                        voronoi_edges[edge.p1].edges.add(new_edge)
+                        voronoi_edges[edge.p2].edges.add(new_edge)                
+                else:
+                    p1p2 = (edge.p2[0] - edge.p1[0], edge.p2[1] - edge.p1[1])
+                    p1p3 = (vertex[0] - edge.p1[0], vertex[1] - edge.p1[1])
+                    orientation = (p1p2[0] * p1p3[1]) - (p1p2[1] * p1p3[0])
+                    if orientation > 0:
+                        y = min_y
+                    else:
+                        y = max_y
+                    b = edge.midpoint[1] - (edge.perp_slope * edge.midpoint[0])
+                    x = (y - b) / edge.perp_slope
+                    new_edge = Edge(c1, (x, y))
+                    voronoi_edges[edge.p1].edges.add(new_edge)
+                    voronoi_edges[edge.p2].edges.add(new_edge)
+    seed_tree = KDTree(seeds)
+    return seed_tree, voronoi_edges
+
+
+def find_closest_cell(voronoi_tree, points, point):
+    """
+    Uses the KD tree of Voronoi diagram information to look up the
+    nearest Voronoi cell to the given point.
+
+    Arguments:
+        voronoi_tree: a KD tree of seed points
+        voronoi_edges: a dictionary mapping seed points to voronoi cells
+        point: a point somewhere on the map
+    Returns:
+        the Voronoi cell this point is in
+    """
+    _, index = voronoi_tree.query(point)
+    return points[index]
+
+
+def test_kd_tree(seeds, min_x, min_y, max_x, max_y):
+    triangles = _bowyer_watson(seeds)
+    tree, edges = _build_voronoi_tree(seeds, triangles, min_x, min_y, max_x, max_y)
+    closest = find_closest_cell(tree, seeds, (11, 9))
+    print(closest)
+    for edge in edges[closest].edges:
+        print(edge)
+
+seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+test_kd_tree(seeds, 0, 0, 40, 40)
