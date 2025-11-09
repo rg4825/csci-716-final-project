@@ -573,11 +573,9 @@ def test_kd_tree(seeds, min_x, min_y, max_x, max_y):
     ]
     triangles = _bowyer_watson(seeds)
     tree, edges = _build_voronoi_tree(seeds, triangles, min_x, min_y, max_x, max_y)
-    for seed, cell in edges.items():
-        print(seed)
-        for edge in cell.get_edges(min_x, min_y, max_x, max_y, seed_info):
-            print(edge)
-    #closest = find_closest_cell(tree, seeds, (11, 9))
+    closest = find_closest_cell(tree, seeds, (11, 9))
+    for edge in edges[closest].get_edges(min_x, min_y, max_x, max_y, seed_info):
+        print(edge)
 
 seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
 test_kd_tree(seeds, 0, 0, 40, 40)
