@@ -143,11 +143,105 @@ class Cell:
     def __init__(self, seed):
         self.seed = seed
         self.edges = set()
+        self.x_border = []
+        self.y_border = []
+
+    def get_edges(self, min_x, min_y, max_x, max_y, seed_info):
+        """
+        Returns a list of edges that make up the polygon sorted by
+        angle around the seed
+
+        Args:
+            min_x, min_y, max_x, max_y: the min/max x and y values
+            of the border box around the points
+            seed_info: list of minimum and maximum x and y values of all
+            seed points (0 is min x, 1 is min y, 2 is max x, 3 is max y)
+        """
+        # if points on x and/or y border, add additional edges
+        if len(self.x_border) == 2:
+            p1 = self.x_border[0]
+            p2 = self.x_border[1]
+            if ((p1[0] <= min_x and p2[0] <= min_y)
+                or (p1[0] >= max_x and p2[0] >= max_x)):
+                self.edges.add(Edge(p1, p2))
+            else:
+                if self.seed[1] == seed_info[1]:
+                    if p1[0] <= min_x and p2[0] >= max_x:
+                        self.edges.add(Edge(p1, (min_x, min_y)))
+                        self.edges.add(Edge((min_x, min_y), (max_x, min_y)))
+                        self.edges.add(Edge(p2, (max_x, min_y)))
+                    elif p1[0] >= max_x and p2[0] <= min_x:
+                        self.edges.add(Edge(p2, (min_x, min_y)))
+                        self.edges.add(Edge((min_x, min_y), (max_x, min_y)))
+                        self.edges.add(Edge(p1, (max_x, min_y)))                   
+                elif self.seed[1] == seed_info[3]:
+                    if p1[0] <= min_x and p2[0] >= max_x:
+                        self.edges.add(Edge(p1, (min_x, max_y)))
+                        self.edges.add(Edge((min_x, max_y), (max_x, max_y)))
+                        self.edges.add(Edge(p2, (max_x, max_y)))
+                    elif p1[0] >= max_x and p2[0] <= min_x:
+                        self.edges.add(Edge(p2, (min_x, max_y)))
+                        self.edges.add(Edge((min_x, max_y), (max_x, max_y)))
+                        self.edges.add(Edge(p1, (max_x, max_y)))   
+        elif len(self.y_border) == 2:
+            p1 = self.y_border[0]
+            p2 = self.y_border[1]
+            if ((p1[1] <= min_y and p2[1] <= min_y) 
+                or (p1[1] >= max_y and p2[1] >= max_y)):
+                self.edges.add(Edge(p1, p2))
+            else:
+                if self.seed[0] == seed_info[0]:
+                    if p1[1] <= min_y and p2[1] >= max_y:
+                        self.edges.add(Edge(p1, (min_x, min_y)))
+                        self.edges.add(Edge((min_x, min_y), (min_x, max_y)))
+                        self.edges.add(Edge(p2, (min_x, max_x)))
+                    elif p1[1] >= max_y and p2[1] <= min_y:
+                        self.edges.add(Edge(p2, (min_x, min_y)))
+                        self.edges.add(Edge((min_x, min_y), (min_x, max_y)))
+                        self.edges.add(Edge(p1, (min_x, max_x)))
+                elif self.seed[0] == seed_info[2]:
+                    if p1[1] <= min_y and p2[1] >= max_y:
+                        self.edges.add(Edge(p1, (max_x, min_y)))
+                        self.edges.add(Edge((max_x, min_y), (max_x, max_y)))
+                        self.edges.add(Edge(p2, (max_x, max_x)))
+                    elif p1[1] >= max_y and p2[1] <= min_y:
+                        self.edges.add(Edge(p2, (max_x, min_y)))
+                        self.edges.add(Edge((max_x, min_y), (min_x, max_y)))
+                        self.edges.add(Edge(p1, (max_x, max_x)))
+        elif len(self.x_border) == 1 and len(self.y_border) == 1:
+            p1 = self.x_border[0]
+            p2 = self.y_border[0]
+            if p1[0] <= min_x:
+                if p2[1] <= min_y:
+                    self.edges.add(Edge(p1, (min_x, min_y)))
+                    self.edges.add(Edge(p2, (min_x, min_y)))
+                elif p2[1] >= max_y:
+                    self.edges.add(Edge(p1, (min_x, max_y)))
+                    self.edges.add(Edge(p2, (min_x, max_y)))
+            elif p1[0] >= max_x:
+                if p2[1] <= min_y:
+                    self.edges.add(Edge(p1, (max_x, min_y)))
+                    self.edges.add(Edge(p2, (max_x, min_y)))
+                elif p2[1] >= max_y:
+                    self.edges.add(Edge(p1, (max_x, max_y)))
+                    self.edges.add(Edge(p2, (max_x, max_y)))
+
+        edge_list = list(self.edges)
+        # sort by angle of p1 to self.seed
+        return sorted(
+            edge_list,
+            key=lambda e: math.atan2(
+                e.p1[1] - self.seed[1], e.p1[0] - self.seed[0]
+            )
+        )
 
     def __eq__(self, other):
         if not isinstance(other, Cell):
             return False
         return self.seed == other.seed
+    
+    def __hash__(self):
+        return hash(self.seed)
     
 # Example usage
 # seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
@@ -383,6 +477,7 @@ def _build_voronoi_tree(points, triangulation, min_x, min_y, max_x, max_y):
                     c1c2 = Edge(c1, c2)
                     voronoi_edges[edge.p1].edges.add(c1c2)
                     voronoi_edges[edge.p2].edges.add(c1c2)
+                    edge_found = True
             if not edge_found:
                 other_edges = [e for e in tri1.edges if e != edge]
                 if other_edges[0].p1 == edge.p1 or other_edges[0].p1 == edge.p2:
@@ -392,22 +487,36 @@ def _build_voronoi_tree(points, triangulation, min_x, min_y, max_x, max_y):
                 
                 if edge.perp_slope is None:
                     if edge.midpoint[1] < vertex[1]:
-                        new_edge = Edge(c1, (c1[0], min_y))
-                        voronoi_edges[edge.p1].edges.add(new_edge)
-                        voronoi_edges[edge.p2].edges.add(new_edge)
+                        border_point = (c1[0], min_y)
+                        cell1 = voronoi_edges[edge.p1]
+                        cell2 = voronoi_edges[edge.p2]
                     else:
-                        new_edge = Edge(c1, (c1[0], max_y))
-                        voronoi_edges[edge.p1].edges.add(new_edge)
-                        voronoi_edges[edge.p2].edges.add(new_edge)
+                        border_point = (c1[0], max_y)
+                        cell1 = voronoi_edges[edge.p1]
+                        cell2 = voronoi_edges[edge.p2]
+                    new_edge = Edge(c1, border_point)
+                    cell1.edges.add(new_edge)
+                    cell2.edges.add(new_edge)
+                    if border_point not in cell1.y_border:
+                        cell1.y_border.append(border_point)
+                    if border_point not in cell2.y_border:
+                        cell2.y_border.append(border_point)
                 elif edge.perp_slope == 0:
                     if edge.midpoint[0] < vertex[0]:
-                        new_edge = Edge(c1, (min_x, c1[1]))
-                        voronoi_edges[edge.p1].edges.add(new_edge)
-                        voronoi_edges[edge.p2].edges.add(new_edge)
+                        border_point = (min_x, c1[1])
+                        cell1 = voronoi_edges[edge.p1]
+                        cell2 = voronoi_edges[edge.p2]
                     else:
-                        new_edge = Edge(c1, (max_x, c1[1]))
-                        voronoi_edges[edge.p1].edges.add(new_edge)
-                        voronoi_edges[edge.p2].edges.add(new_edge)                
+                        border_point = (max_x, c1[1])
+                        cell1 = voronoi_edges[edge.p1]
+                        cell2 = voronoi_edges[edge.p2]  
+                    new_edge = Edge(c1, border_point)   
+                    cell1.edges.add(new_edge)
+                    cell2.edges.add(new_edge)
+                    if border_point not in cell1.x_border:
+                        cell1.x_border.append(border_point)
+                    if border_point not in cell2.x_border:
+                        cell2.x_border.append(border_point)       
                 else:
                     p1p2 = (edge.p2[0] - edge.p1[0], edge.p2[1] - edge.p1[1])
                     p1p3 = (vertex[0] - edge.p1[0], vertex[1] - edge.p1[1])
@@ -421,6 +530,18 @@ def _build_voronoi_tree(points, triangulation, min_x, min_y, max_x, max_y):
                     new_edge = Edge(c1, (x, y))
                     voronoi_edges[edge.p1].edges.add(new_edge)
                     voronoi_edges[edge.p2].edges.add(new_edge)
+                    if y <= min_y:
+                        voronoi_edges[edge.p1].y_border.append((x, y))
+                        voronoi_edges[edge.p2].y_border.append((x, y))
+                    elif y >= max_y:
+                        voronoi_edges[edge.p1].y_border.append((x, y))
+                        voronoi_edges[edge.p2].y_border.append((x, y))
+                    if x <= min_x:
+                        voronoi_edges[edge.p1].x_border.append((x, y))
+                        voronoi_edges[edge.p2].x_border.append((x, y))
+                    elif x >= max_x:
+                        voronoi_edges[edge.p1].x_border.append((x, y))
+                        voronoi_edges[edge.p2].x_border.append((x, y))
     seed_tree = KDTree(seeds)
     return seed_tree, voronoi_edges
 
@@ -432,22 +553,31 @@ def find_closest_cell(voronoi_tree, points, point):
 
     Arguments:
         voronoi_tree: a KD tree of seed points
-        voronoi_edges: a dictionary mapping seed points to voronoi cells
+        points: the list of seed points
         point: a point somewhere on the map
     Returns:
-        the Voronoi cell this point is in
+        the seed of the Voronoi cell this point is in
     """
     _, index = voronoi_tree.query(point)
     return points[index]
 
 
 def test_kd_tree(seeds, min_x, min_y, max_x, max_y):
+    if len(seeds) == 0:
+        return
+    seed_info = [
+        min(seeds, key=lambda p: p[0])[0],
+        min(seeds, key=lambda p: p[1])[1],
+        max(seeds, key=lambda p: p[0])[0],
+        max(seeds, key=lambda p: p[1])[1]
+    ]
     triangles = _bowyer_watson(seeds)
     tree, edges = _build_voronoi_tree(seeds, triangles, min_x, min_y, max_x, max_y)
-    closest = find_closest_cell(tree, seeds, (11, 9))
-    print(closest)
-    for edge in edges[closest].edges:
-        print(edge)
+    for seed, cell in edges.items():
+        print(seed)
+        for edge in cell.get_edges(min_x, min_y, max_x, max_y, seed_info):
+            print(edge)
+    #closest = find_closest_cell(tree, seeds, (11, 9))
 
 seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
 test_kd_tree(seeds, 0, 0, 40, 40)
