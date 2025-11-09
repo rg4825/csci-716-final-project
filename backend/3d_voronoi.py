@@ -169,7 +169,7 @@ def test_kd_tree(seeds, radius, center):
     closest = find_closest_cell(tree, seeds, (0.0000,  0.0000, -1.0000))
     print(closest)
 
-points = [
+'''points = [
     (0.0000,  0.0000,  1.0000),
     (0.5257,  0.0000,  0.8507),
     (-0.5209, -0.3478,  0.7793),
@@ -190,4 +190,4 @@ points = [
     (0.2594, -0.4004, -0.8788),
     (-0.1681,  0.5009,  0.8492)
 ]
-test_kd_tree(points, 1, (0, 0, 0))
+test_kd_tree(points, 1, (0, 0, 0))'''
