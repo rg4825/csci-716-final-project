@@ -196,7 +196,7 @@ def flight_ga():
 
 
 def main():
-    flight_ga()
+    test_ga()
 
 
 if __name__ == "__main__":

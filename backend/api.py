@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List
+import asyncio
 
 from voronoi import *
 
@@ -119,5 +120,176 @@ async def voronoi_stream():
     async def event_generator():
         async for chunk in generate_voronoi():
             yield f"data: {chunk}\n\n"  # SSE format requires 'data:' prefix and double newline
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+from genetic_algorithm import Population, Organism
+import numpy as np
+
+@app.get("/test/ga")
+def test_ga():
+    import string
+    from genetic_algorithm import Population
+
+    target = list("Hello, Computational Geometry!")
+
+    genome = (
+        list(string.ascii_letters)
+        + list(string.digits)
+        + list(string.punctuation)
+        + [" "]
+    )
+    chromosome_len = len(target)
+
+    def fitness_func(chromosomes):
+        char_correct = 0
+        for target_gene, chromosome_gene in zip(target, chromosomes):
+            if target_gene == chromosome_gene:
+                char_correct += 1
+
+        fitness = char_correct / chromosome_len
+        return fitness
+
+    def to_string(organism):
+        return f"\n\tchromosomes: {''.join(organism.chromosomes)}\n\tfitness score = {organism.fitness}"
+
+    def reproduce_func(o1, o2, crossover=0.80):
+        child_chromosome = []
+        rng = np.random.default_rng()
+
+        for gene1, gene2 in zip(o1.chromosomes, o2.chromosomes):
+            p = rng.random()
+
+            if p < crossover / 2:
+                child_chromosome.append(gene1)
+                continue
+
+            elif p < crossover:
+                child_chromosome.append(gene2)
+                continue
+
+            child_chromosome.append(np.random.choice(genome))
+
+        return Organism(child_chromosome, o1.fitness_func, to_string=o1.to_string)
+
+    def create_random_organism():
+        chromosomes = []
+        rng = np.random.default_rng()
+
+        for i in range(chromosome_len):
+            chromosomes.append(rng.choice(genome))
+
+        return Organism(
+            chromosomes,
+            fitness_func,
+            to_string=to_string,
+        )
+
+    population = Population(
+        chromosome_len,
+        fitness_func,
+        reproduce_func,
+        create_random_organism,
+        threshold=0.999,
+        generation_size=100,
+        num_generations=5,
+        organism_to_string=to_string,
+        patience=0,
+    )
+
+    # Yield each generation's fittest organism as JSON
+    fittest = population.fully_evolve_population()
+    return fittest.to_json()
+
+
+def generate_ga_sync():
+    import string
+    from genetic_algorithm import Population
+
+    target = list("Hello, Computational Geometry!")
+
+    genome = (
+        list(string.ascii_letters)
+        + list(string.digits)
+        + list(string.punctuation)
+        + [" "]
+    )
+    chromosome_len = len(target)
+
+    def fitness_func(chromosomes):
+        char_correct = 0
+        for target_gene, chromosome_gene in zip(target, chromosomes):
+            if target_gene == chromosome_gene:
+                char_correct += 1
+
+        fitness = char_correct / chromosome_len
+        return fitness
+
+    def to_string(organism):
+        return f"\n\tchromosomes: {''.join(organism.chromosomes)}\n\tfitness score = {organism.fitness}"
+
+    def reproduce_func(o1, o2, crossover=0.80):
+        child_chromosome = []
+        rng = np.random.default_rng()
+
+        for gene1, gene2 in zip(o1.chromosomes, o2.chromosomes):
+            p = rng.random()
+
+            if p < crossover / 2:
+                child_chromosome.append(gene1)
+                continue
+
+            elif p < crossover:
+                child_chromosome.append(gene2)
+                continue
+
+            child_chromosome.append(np.random.choice(genome))
+
+        return Organism(child_chromosome, o1.fitness_func, to_string=o1.to_string)
+
+    def create_random_organism():
+        chromosomes = []
+        rng = np.random.default_rng()
+
+        for i in range(chromosome_len):
+            chromosomes.append(rng.choice(genome))
+
+        return Organism(
+            chromosomes,
+            fitness_func,
+            to_string=to_string,
+        )
+
+    population = Population(
+        chromosome_len,
+        fitness_func,
+        reproduce_func,
+        create_random_organism,
+        threshold=0.999,
+        generation_size=2000,
+        num_generations=5,
+        organism_to_string=to_string,
+        patience=0,
+    )
+
+    # Yield each generation's fittest organism as JSON
+    for organism, generation in population.fully_evolve_population_generator():
+        yield {
+            "generation": generation,
+            "organism": organism.to_json()
+        }
+
+async def generate_ga():
+    for generation_data in generate_ga_sync():
+        await asyncio.sleep(0.1)  # Simulate async behavior
+        yield generation_data
+
+
+@app.get("/test/ga_async")
+async def test_ga_async():
+    async def event_generator():
+        async for chunk in generate_ga():
+            json_data = json.dumps(chunk) # Convert from dict
+            yield f"data: {json_data}\n\n"  # Proper SSE message format
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
