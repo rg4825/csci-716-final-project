@@ -152,6 +152,7 @@ class Population:
         of generations is hit. Yields the fittest organism of each generation and the fittest overall at the end.
         :param prog_bar:    boolean for if progress bar should be shown per generation
         """
+
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
 

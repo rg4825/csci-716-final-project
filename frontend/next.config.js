@@ -25,10 +25,6 @@ module.exports = {
         source: '/api/test/ga',
         destination: 'http://backend:8000/test/ga',
       },
-      {
-        source: '/api/test/ga_async',
-        destination: 'http://backend:8000/test/ga_async',
-      },
     ];
   },
 };

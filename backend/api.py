@@ -11,13 +11,31 @@ from voronoi import *
 
 app = FastAPI()
 
+# For real-time data streaming (not supported by default in next.is API routes)
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Set up CORS for development purposes (sending data to frontend not through a proxy)
+'''
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (for development)
+    allow_credentials=False,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+)'''
 
 @app.get("/")
 def test():
     return {"output": "hello world"}
-
-
-app = FastAPI()
 
 
 class VoronoiRequest(BaseModel):
@@ -202,7 +220,7 @@ def test_ga():
     return fittest.to_json()
 
 
-def generate_ga_sync():
+async def generate_ga_async():
     import string
     from genetic_algorithm import Population
 
@@ -274,21 +292,21 @@ def generate_ga_sync():
 
     # Yield each generation's fittest organism as JSON
     for organism, generation in population.fully_evolve_population_generator():
+        await asyncio.sleep(0.0)  # Simulate async behavior
         yield {
             "generation": generation,
             "organism": organism.to_json()
         }
 
-async def generate_ga():
-    for generation_data in generate_ga_sync():
-        await asyncio.sleep(0.1)  # Simulate async behavior
-        yield generation_data
+    # End of generator
+    yield {"event": "end"}
+    return
 
 
 @app.get("/test/ga_async")
 async def test_ga_async():
     async def event_generator():
-        async for chunk in generate_ga():
+        async for chunk in generate_ga_async():
             json_data = json.dumps(chunk) # Convert from dict
             yield f"data: {json_data}\n\n"  # Proper SSE message format
 

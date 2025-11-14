@@ -64,13 +64,32 @@ function test_ga() {
 
 async function test_ga_async() {
   console.log("Starting GA async test...");
-  const eventSource = new EventSource("api/test/ga_async");
+  const eventSource = new EventSource("http://localhost:8080/test/ga_async");
+
 
   eventSource.onmessage = function (event) {
     console.log("Received GA update:", event.data);
     const data = JSON.parse(event.data);
+
+    if (data.event === "end") {
+      console.log("GA async stream finished normally.");
+      eventSource.close();   // avoid the browser triggering error event
+      return;
+    }
+
     console.log("GA async data from backend:", data);
   };
+
+  console.log("GA async test setup complete.");
+
+  eventSource.onerror = function (event) {
+    if (eventSource.readyState === EventSource.CLOSED) {
+      console.log("GA async stream closed normally.");
+    } else {
+      console.error("GA async stream error:", event);
+    }
+  };
+
 }
 
 /** 2D Voronoi specific renderer **/
