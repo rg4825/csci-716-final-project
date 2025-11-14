@@ -238,7 +238,7 @@ class Cell:
 
     def get_points(self, min_x, min_y, max_x, max_y, seed_info):
         """
-        Returns a list of edges that make up the polygon sorted by
+        Returns a list of points that make up the polygon sorted by
         angle around the seed
 
         Args:
@@ -261,8 +261,19 @@ class Cell:
             )
         )
     
-    def cell_to_geojson(self, min_x, min_y, max_x, max_y, seed_info, 
-                        voronoi_dict={'polygons': [], 'seeds': []}):
+    def cell_to_geojson(self, min_x, min_y, max_x, max_y, 
+                        seed_info, voronoi_dict):
+        """
+        Adds the seed point and bounding polygon for this region to the 
+        geoJSON-formatted dict provided.
+
+        Args:
+            min_x, min_y, max_x, max_y: the min/max x and y values
+            of the border box around the points
+            seed_info: list of minimum and maximum x and y values of all
+            seed points (0 is min x, 1 is min y, 2 is max x, 3 is max y)
+            voronoi_dict: geoJSON dict to add info about this Voronoi cell to
+        """
         #sorted_edges = self.get_edges(min_x, min_y, max_x, max_y, seed_info)
         sorted_points = self.get_points(min_x, min_y, max_x, max_y, seed_info)
         if len(sorted_points) == 0:
@@ -634,14 +645,14 @@ def test_kd_tree(seeds, min_x, min_y, max_x, max_y):
     ]
     triangles = _bowyer_watson(seeds)
     tree, cells = _build_voronoi_tree(seeds, triangles, min_x, min_y, max_x, max_y)
-    closest = find_closest_cell(tree, seeds, (11, 9))
-    '''for edge in edges[closest].get_edges(min_x, min_y, max_x, max_y, seed_info):
+    '''closest = find_closest_cell(tree, seeds, (11, 9))
+    for edge in edges[closest].get_edges(min_x, min_y, max_x, max_y, seed_info):
         print(edge)'''
-    geojson_dict = {'polygons': [], 'seeds': []}
+    geojson_dict = {"type": "FeatureCollection", "polygons": [], "seeds": []}
     for cell in cells.values():
-        cell.cell_to_geojson(min_x, min_y, max_x, max_y, 
-                             seed_info, geojson_dict)
-    print(geojson_dict)
+        cell.cell_to_geojson(min_x, min_y, max_x, max_y, seed_info, geojson_dict)
+    voronoi_geojson = json.dumps(geojson_dict)
+    print(voronoi_geojson)
     
 
 seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
