@@ -603,7 +603,7 @@ def _build_voronoi_tree(points, triangulation, min_x, min_y, max_x, max_y):
                     elif x >= max_x:
                         voronoi_edges[edge.p1].x_border.append((x, y))
                         voronoi_edges[edge.p2].x_border.append((x, y))
-    seed_tree = KDTree(seeds)
+    seed_tree = KDTree(points)
     return seed_tree, voronoi_edges
 
 
@@ -644,5 +644,5 @@ def test_kd_tree(seeds, min_x, min_y, max_x, max_y):
     print(geojson_dict)
     
 
-'''seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
-test_kd_tree(seeds, 0, 0, 40, 40)'''
+seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+test_kd_tree(seeds, 0, 0, 40, 40)
