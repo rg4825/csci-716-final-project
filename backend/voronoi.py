@@ -231,8 +231,69 @@ class Cell:
         return sorted(
             edge_list,
             key=lambda e: math.atan2(
-                e.p1[1] - self.seed[1], e.p1[0] - self.seed[0]
+                ((e.p1[1] + e.p2[1]) /2) - self.seed[1], 
+                ((e.p1[0] + e.p2[0]) /2) - self.seed[0]
             )
+        )
+
+    def get_points(self, min_x, min_y, max_x, max_y, seed_info):
+        """
+        Returns a list of edges that make up the polygon sorted by
+        angle around the seed
+
+        Args:
+            min_x, min_y, max_x, max_y: the min/max x and y values
+            of the border box around the points
+            seed_info: list of minimum and maximum x and y values of all
+            seed points (0 is min x, 1 is min y, 2 is max x, 3 is max y)
+        """
+        # if points on x and/or y border, add additional edges
+        edges = self.get_edges(min_x, min_y, max_x, max_y, seed_info)
+        points = set()
+        for edge in edges:
+            points.add(edge.p1)
+            points.add(edge.p2)
+        # sort by angle of p1 to self.seed
+        return sorted(
+            list(points),
+            key=lambda p: math.atan2(
+                p[1] - self.seed[1], p[0] - self.seed[0]
+            )
+        )
+    
+    def cell_to_geojson(self, min_x, min_y, max_x, max_y, seed_info, 
+                        voronoi_dict={'polygons': [], 'seeds': []}):
+        #sorted_edges = self.get_edges(min_x, min_y, max_x, max_y, seed_info)
+        sorted_points = self.get_points(min_x, min_y, max_x, max_y, seed_info)
+        if len(sorted_points) == 0:
+            return
+        coord_list = []
+        for point in sorted_points:
+            coord_list.append([point[0], point[1]])
+        coord_list.append([sorted_points[0][0], sorted_points[0][1]])
+        #coord_list.append([sorted_edges[-1].p1[0], sorted_edges[-1].p1[1]])
+        #print(coord_list) #TEST
+        #coord_list.append([sorted_edges[0].p1[0], sorted_edges[0].p1[1]])
+
+        voronoi_dict["polygons"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon", 
+                    "coordinates": coord_list,
+                },
+                "properties": {},
+            }
+        )
+        voronoi_dict["seeds"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [self.seed[0], self.seed[1]],
+                },
+                "properties": {"is_seed": True},
+            }
         )
 
     def __eq__(self, other):
@@ -460,7 +521,7 @@ def _build_voronoi_tree(points, triangulation, min_x, min_y, max_x, max_y):
         max_y: maximum y coordinate the "infinite edges" can extend out to
     Returns:
         KD Tree of seed points
-        dictionary of seed points and Voronoi edges
+        dictionary of seed points and Voronoi cells
     """
     voronoi_edges = {}
     for point in points:
@@ -572,10 +633,16 @@ def test_kd_tree(seeds, min_x, min_y, max_x, max_y):
         max(seeds, key=lambda p: p[1])[1]
     ]
     triangles = _bowyer_watson(seeds)
-    tree, edges = _build_voronoi_tree(seeds, triangles, min_x, min_y, max_x, max_y)
+    tree, cells = _build_voronoi_tree(seeds, triangles, min_x, min_y, max_x, max_y)
     closest = find_closest_cell(tree, seeds, (11, 9))
-    for edge in edges[closest].get_edges(min_x, min_y, max_x, max_y, seed_info):
-        print(edge)
+    '''for edge in edges[closest].get_edges(min_x, min_y, max_x, max_y, seed_info):
+        print(edge)'''
+    geojson_dict = {'polygons': [], 'seeds': []}
+    for cell in cells.values():
+        cell.cell_to_geojson(min_x, min_y, max_x, max_y, 
+                             seed_info, geojson_dict)
+    print(geojson_dict)
+    
 
 '''seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
 test_kd_tree(seeds, 0, 0, 40, 40)'''
