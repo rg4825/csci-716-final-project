@@ -2,9 +2,10 @@
 // TODO: Make sure streaming Voronoi works correctly with multiple updates
 // TODO: Implement 3D Voronoi rendering from backend data
 // Test Yield with GA test function (replace fully_evolve_population +_gen)
+// Send Lauren voronoi geojson format
 
 "use client";
-import { useEffect, useRef } from "react";
+import { use, useEffect, useRef } from "react";
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import { geoVoronoi } from "d3-geo-voronoi"; // TODO- Replace with file reading
@@ -16,13 +17,18 @@ export default function Home() {
   // Refs for the three visualizations
   const globeRef = useRef(null);
   const mapRef = useRef(null);
-  const voronoiRef = useRef(null);
+  //const voronoiRef = useRef(null);
 
+
+  // Test GA functions
+  useEffect(() => {
+    test_ga_async();
+  }, []);
 
   useEffect(() => {
     if (globeRef.current) renderMap(globeRef.current, "globe");
     if (mapRef.current) renderMap(mapRef.current, "flat");
-    if (voronoiRef.current) render2d(voronoiRef.current);
+    //if (voronoiRef.current) render2d(voronoiRef.current);
   }, []);
 
   return (
@@ -40,10 +46,50 @@ export default function Home() {
       <div className={styles.container}>
         <div ref={globeRef} />
         <div ref={mapRef} />
-        <div ref={voronoiRef} />
       </div>
     </main>
   );
+}
+
+function test_ga() {
+  fetch("api/test/ga")
+    .then(response => response.json())
+    .then(data => {
+      console.log("GA Test Result:", data);
+    })
+    .catch(error => {
+      console.error("Error fetching GA test data:", error);
+    });
+}
+
+async function test_ga_async() {
+  console.log("Starting GA async test...");
+  const eventSource = new EventSource("http://localhost:8080/test/ga_async");
+
+
+  eventSource.onmessage = function (event) {
+    console.log("Received GA update:", event.data);
+    const data = JSON.parse(event.data);
+
+    if (data.event === "end") {
+      console.log("GA async stream finished normally.");
+      eventSource.close();   // avoid the browser triggering error event
+      return;
+    }
+
+    console.log("GA async data from backend:", data);
+  };
+
+  console.log("GA async test setup complete.");
+
+  eventSource.onerror = function (event) {
+    if (eventSource.readyState === EventSource.CLOSED) {
+      console.log("GA async stream closed normally.");
+    } else {
+      console.error("GA async stream error:", event);
+    }
+  };
+
 }
 
 /** 2D Voronoi specific renderer **/

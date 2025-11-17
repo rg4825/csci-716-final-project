@@ -30,6 +30,12 @@ class Organism:
 
     def __eq__(self, other):
         return self.chromosomes == other.chromosomes
+    
+    def to_json(self):
+        return {
+            "chromosomes": "".join(self.chromosomes),
+            "fitness": self.fitness
+        }
 
 
 class Population:
@@ -146,6 +152,7 @@ class Population:
         of generations is hit. Yields the fittest organism of each generation and the fittest overall at the end.
         :param prog_bar:    boolean for if progress bar should be shown per generation
         """
+
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
 
@@ -157,7 +164,7 @@ class Population:
                 self.current_generation_index += 1
                 fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
                 print(f"fittest organism: {fittest_organism}")
-                yield fittest_organism
+                yield fittest_organism, self.current_generation_index
 
                 if fittest_organism == prev_fittest_organism:
                     patience_counter += 1
@@ -169,17 +176,17 @@ class Population:
                     print(
                         f"fitness has not improved in {self.patience} iterations, stopping early..."
                     )
-                    yield fittest_organism
+                    yield fittest_organism, self.current_generation_index
 
                 if fittest_organism.fitness >= self.threshold:
                     print(f"fitness >= threshold {self.threshold}, stopping...")
-                    yield fittest_organism
+                    yield fittest_organism, self.current_generation_index
 
         for _ in range(self.num_generations):
             self.current_generation_index += 1
             fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
             print(f"fittest organism: {fittest_organism}")
-            yield fittest_organism
+            yield fittest_organism, self.current_generation_index
 
             if fittest_organism == prev_fittest_organism:
                 patience_counter += 1
@@ -197,7 +204,7 @@ class Population:
                 print(f"fitness >= threshold {self.threshold}, stopping...")
                 break
 
-        yield fittest_organism
+        return
 
     def advance_one_generation(self, prog_bar=True):
         """
