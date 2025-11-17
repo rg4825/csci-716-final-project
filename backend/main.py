@@ -114,6 +114,9 @@ def flight_ga():
         x, y = x_min + norm_x * x_diff, y_min + norm_y * y_diff
         return float(x), float(y)
 
+    def _decode_chromosomes_to_list(chromosomes):
+        return [_decode_chromosome(c) for c in chromosomes]
+
     def fitness_func(chromosomes):
         return 0.0
 
@@ -196,8 +199,7 @@ def flight_ga():
 
 
 def main():
-    #test_ga()
-    pass
+    flight_ga()
 
 
 if __name__ == "__main__":
