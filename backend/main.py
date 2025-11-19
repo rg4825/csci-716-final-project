@@ -133,6 +133,17 @@ def flight_ga():
         x, y = x_min + norm_x * x_diff, y_min + norm_y * y_diff
         return float(x), float(y)
 
+    def organism_to_voronoi(organism):
+        """
+        :param organism:    organism for the voronoi flight task
+        :return:            seed_tree, voronoi_edges from compute_voronoi_tree
+        """
+        seeds = [_decode_chromosome(c) for c in organism.chromosomes]
+        seed_tree, voronoi_edges = compute_voronoi_tree(
+            seeds, x_min, y_min, x_max, y_max
+        )
+        return seed_tree, voronoi_edges
+
     def fitness_func(chromosomes):
         seeds = [_decode_chromosome(c) for c in chromosomes]
         cell_duration_dict = dict.fromkeys(seeds, 0)
