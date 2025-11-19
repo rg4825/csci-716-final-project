@@ -3,9 +3,10 @@
 
 import numpy as np
 
+from collections import Counter
 from open_sky import get_flights_airport, get_flight_trajectories
 from genetic_algorithm import Organism, Population
-from voronoi import compute_voronoi_tree
+from voronoi import compute_voronoi_tree, find_closest_cell
 
 MAX_32 = 2**32 - 1
 
@@ -101,7 +102,8 @@ def flight_ga():
     cells = 20
 
     flights, bbox = get_flights_airport(airport, radius)
-    trajectories = get_flight_trajectories(flights)
+    # trajectories = get_flight_trajectories(flights)
+    trajectories = []
 
     y_min, x_min, y_max, x_max = bbox[0], bbox[1], bbox[2], bbox[3]
     x_diff = x_max - x_min
@@ -131,10 +133,43 @@ def flight_ga():
 
     def fitness_func(chromosomes):
         seeds = [_decode_chromosome(c) for c in chromosomes]
+        cell_duration_dict = dict.fromkeys(seeds)
+        total_flights_in_cell = dict.fromkeys(seeds)
+
         seed_tree, voronoi_edges = compute_voronoi_tree(
             seeds, x_min, y_min, x_max, y_max
         )
-        return 0.0
+        for t in trajectories:
+            cell_counter = dict.fromkeys(seeds)
+            prev_cell = None
+
+            for waypoint in t:
+                lat, lng = waypoint['latitude'], waypoint['longitude']
+                if lat < x_min or lat > x_max or lng < y_min or lng > y_max:
+                    continue
+                cell = find_closest_cell(seed_tree, seeds, (lat, lng))
+
+                if cell_counter[cell] == 0:
+                    cell_counter[cell] += 1
+
+                if cell == prev_cell:
+                    cell_duration_dict[cell] += (cell['timestamp'] - prev_cell['timestamp'] if prev_cell is not None else 0)
+                    prev_cell = cell
+                    continue
+
+                prev_cell = cell
+
+            total_flights_in_cell = Counter(total_flights_in_cell) + Counter(cell_counter)
+
+        min_avg_flight_time = 0
+        for seed in seeds:
+            duration = cell_duration_dict[seed]
+            num_flights = total_flights_in_cell[seed]
+            avg_flight_time = duration/num_flights
+            if avg_flight_time < min_avg_flight_time:
+                min_avg_flight_time = avg_flight_time
+
+        return -min_avg_flight_time
 
     def to_string(organism):
         s = "\n\tchromosomes:"
