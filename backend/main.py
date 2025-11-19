@@ -4,6 +4,9 @@
 import numpy as np
 
 from collections import Counter
+
+from pyarrow import int32
+
 from open_sky import get_flights_airport, get_flight_trajectories
 from genetic_algorithm import Organism, Population
 from voronoi import compute_voronoi_tree, find_closest_cell
@@ -97,13 +100,12 @@ def test_open_sky():
 
 
 def flight_ga():
-    airport = "Dallas Fort Worth International Airport"
+    airport = "Akron Canton Regional Airport"
     radius = 50
     cells = 20
 
     flights, bbox = get_flights_airport(airport, radius)
-    # trajectories = get_flight_trajectories(flights)
-    trajectories = []
+    trajectories = get_flight_trajectories(flights)
 
     y_min, x_min, y_max, x_max = bbox[0], bbox[1], bbox[2], bbox[3]
     x_diff = x_max - x_min
@@ -133,39 +135,46 @@ def flight_ga():
 
     def fitness_func(chromosomes):
         seeds = [_decode_chromosome(c) for c in chromosomes]
-        cell_duration_dict = dict.fromkeys(seeds)
-        total_flights_in_cell = dict.fromkeys(seeds)
+        cell_duration_dict = dict.fromkeys(seeds, 0)
+        total_flights_in_cell = dict.fromkeys(seeds, 0)
 
         seed_tree, voronoi_edges = compute_voronoi_tree(
             seeds, x_min, y_min, x_max, y_max
         )
         for t in trajectories:
-            cell_counter = dict.fromkeys(seeds)
+            cell_counter = dict.fromkeys(seeds, 0)
             prev_cell = None
+            prev_waypoint = None
 
-            for waypoint in t:
-                lat, lng = waypoint['latitude'], waypoint['longitude']
-                if lat < x_min or lat > x_max or lng < y_min or lng > y_max:
+            for waypoint in t.itertuples():
+                if waypoint.latitude < x_min or waypoint.latitude > x_max or waypoint.longitude < y_min or waypoint.longitude > y_max:
                     continue
-                cell = find_closest_cell(seed_tree, seeds, (lat, lng))
+                cell = find_closest_cell(seed_tree, seeds, (waypoint.latitude, waypoint.longitude))
 
                 if cell_counter[cell] == 0:
                     cell_counter[cell] += 1
 
                 if cell == prev_cell:
-                    cell_duration_dict[cell] += (cell['timestamp'] - prev_cell['timestamp'] if prev_cell is not None else 0)
+                    cell_duration_dict[cell] += (waypoint.timestamp - prev_waypoint.timestamp).seconds
                     prev_cell = cell
+                    prev_waypoint = waypoint
                     continue
 
                 prev_cell = cell
+                prev_waypoint = waypoint
 
-            total_flights_in_cell = Counter(total_flights_in_cell) + Counter(cell_counter)
+            for seed in seeds:
+                total_flights_in_cell[seed] += cell_counter[seed]
 
-        min_avg_flight_time = 0
+        min_avg_flight_time = float('inf')
         for seed in seeds:
             duration = cell_duration_dict[seed]
+            if duration == 0:
+                continue  # I am assuming that we skip if it's 0, but we could theoretically say it's 0 and then break
+
             num_flights = total_flights_in_cell[seed]
             avg_flight_time = duration/num_flights
+
             if avg_flight_time < min_avg_flight_time:
                 min_avg_flight_time = avg_flight_time
 
