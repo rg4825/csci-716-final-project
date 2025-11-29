@@ -309,6 +309,8 @@ async function renderMap(container, type = "globe") {
     .attr('d', path)
     .attr('class', styles.voronoiCell);
 
+  console.log(voronoi.polygons().features);
+
   // --- Interaction ---
   addInteraction(svg, projection, path, width, height, type);
 
