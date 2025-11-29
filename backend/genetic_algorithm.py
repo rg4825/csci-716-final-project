@@ -108,7 +108,7 @@ class Population:
                 fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
                 print(f"fittest organism: {fittest_organism}")
 
-                if fittest_organism == prev_fittest_organism:
+                if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                     patience_counter += 1
                 else:
                     patience_counter = 0
@@ -129,7 +129,7 @@ class Population:
             fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
             print(f"fittest organism: {fittest_organism}")
 
-            if fittest_organism == prev_fittest_organism:
+            if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                 patience_counter += 1
             else:
                 patience_counter = 0
@@ -168,7 +168,7 @@ class Population:
                 print(f"fittest organism: {fittest_organism}")
                 yield fittest_organism, self.current_generation_index
 
-                if fittest_organism == prev_fittest_organism:
+                if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                     patience_counter += 1
                 else:
                     patience_counter = 0
@@ -190,7 +190,7 @@ class Population:
             print(f"fittest organism: {fittest_organism}")
             yield fittest_organism, self.current_generation_index
 
-            if fittest_organism == prev_fittest_organism:
+            if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                 patience_counter += 1
             else:
                 patience_counter = 0
