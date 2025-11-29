@@ -4,6 +4,7 @@
 from dcel import *
 import json
 from scipy.spatial import KDTree 
+import numpy as np
 
 class Cell:
     """
@@ -15,12 +16,14 @@ class Cell:
         self.sort_point = None
         self.edges = set()
 
-    def cell_to_geojson(self, voronoi_dict):
+    def cell_to_geojson(self, center, radius, voronoi_dict):
         """
         Adds the seed point and bounding polygon for this region to the
         geoJSON-formatted dict provided.
 
         Args:
+            center: center of the sphere these points are located on
+            radius: radius of the sphere these points are located on
             voronoi_dict: geoJSON dict to add info about this Voronoi cell
         """
         sums = [0, 0, 0]
@@ -28,25 +31,61 @@ class Cell:
         for edge in self.edges:
             points.add(edge[0])
             points.add(edge[1])
-        for point in points:
-            sums[0] += point.x
-            sums[1] += point.y
-            sums[2] += point.z
         if len(points) == 0:
             return
-        # find center point
-        center = Vertex(
-            sums[0] / len(points),
-            sums[1] / len(points),
-            sums[2] / len(points)
+
+        # convert seed and points into unit vectors
+        seed_vector = (
+            (self.seed.x - center[0]) / radius,
+            (self.seed.y - center[1]) / radius,
+            (self.seed.z - center[2]) / radius
         )
 
-        sorted_points = sorted(
-            list(points),
-            key=lambda p: math.atan2(
-                p.y - center.y, p.x - center.x
+        point_dict = {}
+        for point in points:
+            point_vector = (
+                (point.x - center[0]) / radius,
+                (point.y - center[1]) / radius,
+                (point.z - center[2]) / radius
             )
-        )
+            # map point vector to original point
+            point_dict[point_vector] = point
+
+        # pick random vector (not parallel to seed), estimate w/ cross product
+        if np.linalg.norm(np.cross(seed_vector, [1, 0, 0])) <= 1e-10:
+            tmp_vector = [0, 1, 0]
+        else:
+            tmp_vector = [1, 0, 0]
+
+        v1 = np.cross(tmp_vector, seed_vector)
+        v1 /= np.linalg.norm(v1)
+        v2 = np.cross(center, v1)
+
+        angle_dict = {}
+        for point in point_dict.keys():
+            # get angles to compare
+            to_project = np.dot(point, seed_vector) * np.array(seed_vector, dtype=float)
+            new_vals = (
+                point[0] - to_project,
+                point[1] - to_project,
+                point[2] - to_project
+            )
+            new_vals /= np.linalg.norm(new_vals)
+            angle = tuple(np.arctan2(
+                np.dot(new_vals, v2),
+                np.dot(new_vals, v1)
+            ))
+            # map angle to point vector
+            angle_dict[angle] = point
+        
+        sorted_angles = sorted(angle_dict.keys())
+
+        sorted_points = []
+        for angle in sorted_angles:
+            point = point_dict.get(angle_dict[angle])
+            if point:
+                sorted_points.append(point)
+
         coord_list = []
         for point in sorted_points:
             coord_list.append([point.x, point.y, point.z])
@@ -234,7 +273,7 @@ def test_kd_tree(seeds, radius, center):
     print(closest)'''
     geojson_dict = {"type": "FeatureCollection", "polygons": [], "seeds": []}
     for cell in cells.values():
-        cell.cell_to_geojson(geojson_dict)
+        cell.cell_to_geojson(center, radius, geojson_dict)
     voronoi_geojson = json.dumps(geojson_dict)
     print(voronoi_geojson)
 
