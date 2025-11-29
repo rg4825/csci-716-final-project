@@ -1,7 +1,9 @@
 # file:         open_sky.py
 # description:  contains the functions for interacting with the OpenSky API
+from http.client import HTTPException
 
 import pandas as pd
+from httpx import HTTPStatusError
 
 from pyopensky.rest import REST
 from geopy import Point
@@ -45,7 +47,10 @@ def get_flight_trajectories(flights):
     trajectories = []
     for flight in flights.itertuples():
         icao24 = flight.icao24
-        trajectories.append(API.tracks(icao24))
+        try:
+            trajectories.append(API.tracks(icao24))
+        except HTTPStatusError:
+            print(f"skipping flight {icao24} due to invalid endpoint")
     return trajectories
 
 

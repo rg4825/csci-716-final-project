@@ -338,6 +338,20 @@ def compute_voronoi(seeds, min_x, min_y, max_x, max_y):
     return _store_edges_as_geo_json(seeds, voronoi_edges)
 
 
+def compute_voronoi_tree(seeds, min_x, min_y, max_x, max_y):
+    """
+    Given a set of seed points and a set of bounds, create a voronoi diagram.
+    :param seeds:   a list of tuples representing x, y coordinates
+    :param min_x:   minimum x coordinate the "infinite edges" can extend out to
+    :param min_y:   maximum x coordinate the "infinite edges" can extend out to
+    :param max_x:   minimum y coordinate the "infinite edges" can extend out to
+    :param max_y:   maximum y coordinate the "infinite edges" can extend out to
+    :return:        geojson representation of the voronoi diagram
+    """
+    triangles = _bowyer_watson(seeds)
+    return _build_voronoi_tree(seeds, triangles, min_x, min_y, max_x, max_y)
+
+
 def _find_supertriangle(points):
     """
     Finds a supertriangle that surrounds the set of points provided

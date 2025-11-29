@@ -20,7 +20,11 @@ module.exports = {
       {
         source: '/api/voronoi/stream',
         destination: 'http://backend:8000/voronoi/stream',
-      }
+      },
+      {
+        source: '/api/test/ga',
+        destination: 'http://backend:8000/test/ga',
+      },
     ];
   },
 };
