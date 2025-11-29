@@ -25,7 +25,6 @@ class Cell:
             radius: radius of the sphere these points are located on
             voronoi_dict: geoJSON dict to add info about this Voronoi cell
         """
-        sums = [0, 0, 0]
         points = set()
         for edge in self.edges:
             points.add(edge[0])
@@ -225,11 +224,14 @@ def _build_voronoi_tree(seeds, dcel, radius, center):
     for face in dcel.faces:
         face.calc_circumcenter(radius, center)
     for edge in dcel.half_edges:
-        if edge.org not in voronoi_edges:
-            voronoi_edges[edge.org] = Cell(edge.org)
+        edge_tuple = (edge.org.x, edge.org.y, edge.org.z)
+        if edge_tuple not in voronoi_edges:
+            voronoi_edges[edge_tuple] = Cell(edge.org)
     for face in dcel.faces:
         edges = face.get_edges()
         for edge in edges:
+            edge_tuple = (edge.org.x, edge.org.y, edge.org.z)
+            twin_tuple = (edge.twin.org.x, edge.twin.org.y, edge.twin.org.z)
             c1 = face.circumcenter
             c2 = edge.twin.face.circumcenter
             if c1 is None or c2 is None:
@@ -237,10 +239,10 @@ def _build_voronoi_tree(seeds, dcel, radius, center):
             new_edge = tuple(
                     sorted([c1, c2], key=lambda c: (c.x, c.y, c.z))
                 )
-            voronoi_edges[edge.org].edges.add(
+            voronoi_edges[edge_tuple].edges.add(
                 new_edge
             )
-            voronoi_edges[edge.twin.org].edges.add(
+            voronoi_edges[twin_tuple].edges.add(
                 new_edge
             )
     seed_tree = KDTree(seeds)
@@ -266,9 +268,8 @@ def find_closest_cell(voronoi_tree, points, point):
 def test_kd_tree(seeds, radius, center):
     hull_dcel = convex_hull_3d(seeds)
     tree, cells = _build_voronoi_tree(seeds, hull_dcel, radius, center)
-    '''closest = find_closest_cell(tree, seeds, (0.0000,  0.0000, -1.0000))
-    closest_to_cell = Vertex(closest[0], closest[1], closest[2])
-    print(cells.get(closest_to_cell)) # need to make vertex to look up cell'''
+    #closest = find_closest_cell(tree, seeds, (0.0000,  0.0000, -1.0000))
+    #print(cells.get(closest))
     geojson_dict = {"type": "FeatureCollection", "polygons": [], "seeds": []}
     for cell in cells.values():
         cell.cell_to_geojson(center, radius, geojson_dict)
@@ -276,7 +277,7 @@ def test_kd_tree(seeds, radius, center):
     print(voronoi_geojson)
 
 
-points = [
+'''points = [
     (0.0000,  0.0000,  1.0000),
     (0.5257,  0.0000,  0.8507),
     (-0.5209, -0.3478,  0.7793),
@@ -297,4 +298,4 @@ points = [
     (0.2594, -0.4004, -0.8788),
     (-0.1681,  0.5009,  0.8492)
 ]
-test_kd_tree(points, 1, (0, 0, 0))
+test_kd_tree(points, 1, (0, 0, 0))'''
