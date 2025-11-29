@@ -266,10 +266,9 @@ def find_closest_cell(voronoi_tree, points, point):
 def test_kd_tree(seeds, radius, center):
     hull_dcel = convex_hull_3d(seeds)
     tree, cells = _build_voronoi_tree(seeds, hull_dcel, radius, center)
-    '''for seed, cell in cells.items():
-        pass
-    closest = find_closest_cell(tree, seeds, (0.0000,  0.0000, -1.0000))
-    print(closest)'''
+    '''closest = find_closest_cell(tree, seeds, (0.0000,  0.0000, -1.0000))
+    closest_to_cell = Vertex(closest[0], closest[1], closest[2])
+    print(cells.get(closest_to_cell)) # need to make vertex to look up cell'''
     geojson_dict = {"type": "FeatureCollection", "polygons": [], "seeds": []}
     for cell in cells.values():
         cell.cell_to_geojson(center, radius, geojson_dict)
