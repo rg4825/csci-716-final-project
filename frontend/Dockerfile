@@ -16,5 +16,9 @@ COPY . .
 # Build the Next.js app
 #RUN npm run build
 
+# Set environment variable for production
+#ENV NODE_ENV=production
+
 # Start the Next.js app
 CMD ["npm", "run", "dev"]
+#CMD ["npm", "run", "start"]

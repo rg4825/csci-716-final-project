@@ -30,6 +30,12 @@ class Organism:
 
     def __eq__(self, other):
         return self.chromosomes == other.chromosomes
+    
+    def to_json(self):
+        return {
+            "chromosomes": "".join(self.chromosomes),
+            "fitness": self.fitness
+        }
 
 
 class Population:
@@ -93,6 +99,7 @@ class Population:
         fittest_organism = self.current_generation[0]
 
         prev_fittest_organism = self.current_generation[0]
+        print(f"fittest organism: {fittest_organism}")
         patience_counter = 0
 
         if self.num_generations == 0:
@@ -101,7 +108,7 @@ class Population:
                 fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
                 print(f"fittest organism: {fittest_organism}")
 
-                if fittest_organism == prev_fittest_organism:
+                if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                     patience_counter += 1
                 else:
                     patience_counter = 0
@@ -122,7 +129,7 @@ class Population:
             fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
             print(f"fittest organism: {fittest_organism}")
 
-            if fittest_organism == prev_fittest_organism:
+            if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                 patience_counter += 1
             else:
                 patience_counter = 0
@@ -146,8 +153,10 @@ class Population:
         of generations is hit. Yields the fittest organism of each generation and the fittest overall at the end.
         :param prog_bar:    boolean for if progress bar should be shown per generation
         """
+
         self.initialize_generation()  # this is considered generation 0
         fittest_organism = self.current_generation[0]
+        yield fittest_organism, self.current_generation_index
 
         prev_fittest_organism = self.current_generation[0]
         patience_counter = 0
@@ -157,9 +166,9 @@ class Population:
                 self.current_generation_index += 1
                 fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
                 print(f"fittest organism: {fittest_organism}")
-                yield fittest_organism
+                yield fittest_organism, self.current_generation_index
 
-                if fittest_organism == prev_fittest_organism:
+                if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                     patience_counter += 1
                 else:
                     patience_counter = 0
@@ -169,19 +178,19 @@ class Population:
                     print(
                         f"fitness has not improved in {self.patience} iterations, stopping early..."
                     )
-                    yield fittest_organism
+                    yield fittest_organism, self.current_generation_index
 
                 if fittest_organism.fitness >= self.threshold:
                     print(f"fitness >= threshold {self.threshold}, stopping...")
-                    yield fittest_organism
+                    yield fittest_organism, self.current_generation_index
 
         for _ in range(self.num_generations):
             self.current_generation_index += 1
             fittest_organism = self.advance_one_generation(prog_bar=prog_bar)
             print(f"fittest organism: {fittest_organism}")
-            yield fittest_organism
+            yield fittest_organism, self.current_generation_index
 
-            if fittest_organism == prev_fittest_organism:
+            if (fittest_organism.chromosomes == prev_fittest_organism.chromosomes).all():
                 patience_counter += 1
             else:
                 patience_counter = 0
@@ -197,7 +206,7 @@ class Population:
                 print(f"fitness >= threshold {self.threshold}, stopping...")
                 break
 
-        yield fittest_organism
+        return
 
     def advance_one_generation(self, prog_bar=True):
         """
@@ -240,17 +249,22 @@ class Population:
         )  # sort the new generation by fitness
         return self.current_generation[0]
 
-    def initialize_generation(self):
+    def initialize_generation(self, prog_bar=True):
         """
         Updates self.current_generation if it's currently empty with self.generation_size number of organisms.
         :return:    None
         """
         if self.current_generation:
             return
+        if prog_bar:
+            for _ in tqdm(range(self.generation_size), desc="initializing generation"):
+                organism = self.generator_func()
+                self.current_generation.append(organism)
 
-        for _ in range(self.generation_size):
-            organism = self.generator_func()
-            self.current_generation.append(organism)
+        else:
+            for _ in range(self.generation_size):
+                organism = self.generator_func()
+                self.current_generation.append(organism)
 
         self.current_generation = sorted(
             self.current_generation, key=lambda o: o.fitness, reverse=True
