@@ -13,7 +13,6 @@ class Cell:
     """
     def __init__(self, seed):
         self.seed = seed # should be a vertex
-        self.sort_point = None
         self.edges = set()
 
     def cell_to_geojson(self, center, radius, voronoi_dict):
