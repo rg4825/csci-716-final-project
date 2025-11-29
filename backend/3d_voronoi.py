@@ -12,7 +12,69 @@ class Cell:
     """
     def __init__(self, seed):
         self.seed = seed # should be a vertex
+        self.sort_point = None
         self.edges = set()
+
+    def cell_to_geojson(self, voronoi_dict):
+        """
+        Adds the seed point and bounding polygon for this region to the
+        geoJSON-formatted dict provided.
+
+        Args:
+            voronoi_dict: geoJSON dict to add info about this Voronoi cell
+        """
+        sums = [0, 0, 0]
+        points = set()
+        for edge in self.edges:
+            points.add(edge[0])
+            points.add(edge[1])
+        for point in points:
+            sums[0] += point.x
+            sums[1] += point.y
+            sums[2] += point.z
+        if len(points) == 0:
+            return
+        # find center point
+        center = Vertex(
+            sums[0] / len(points),
+            sums[1] / len(points),
+            sums[2] / len(points)
+        )
+
+        sorted_points = sorted(
+            list(points),
+            key=lambda p: math.atan2(
+                p.y - center.y, p.x - center.x
+            )
+        )
+        coord_list = []
+        for point in sorted_points:
+            coord_list.append([point.x, point.y, point.z])
+        coord_list.append(
+            [sorted_points[0].x, sorted_points[0].y, sorted_points[0].z]
+        )
+
+        voronoi_dict["polygons"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon", 
+                    "coordinates": coord_list,
+                },
+                "properties": {},
+            }
+        )
+        voronoi_dict["seeds"].append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [self.seed.x, self.seed.y, self.seed.z],
+                },
+                "properties": {"is_seed": True},
+            }
+        )
+        
 
     def __eq__(self, other):
         if not isinstance(other, Cell):
@@ -165,11 +227,19 @@ def find_closest_cell(voronoi_tree, points, point):
 
 def test_kd_tree(seeds, radius, center):
     hull_dcel = convex_hull_3d(seeds)
-    tree, edges = _build_voronoi_tree(seeds, hull_dcel, radius, center)
+    tree, cells = _build_voronoi_tree(seeds, hull_dcel, radius, center)
+    '''for seed, cell in cells.items():
+        pass
     closest = find_closest_cell(tree, seeds, (0.0000,  0.0000, -1.0000))
-    print(closest)
+    print(closest)'''
+    geojson_dict = {"type": "FeatureCollection", "polygons": [], "seeds": []}
+    for cell in cells.values():
+        cell.cell_to_geojson(geojson_dict)
+    voronoi_geojson = json.dumps(geojson_dict)
+    print(voronoi_geojson)
 
-'''points = [
+
+points = [
     (0.0000,  0.0000,  1.0000),
     (0.5257,  0.0000,  0.8507),
     (-0.5209, -0.3478,  0.7793),
@@ -190,4 +260,4 @@ def test_kd_tree(seeds, radius, center):
     (0.2594, -0.4004, -0.8788),
     (-0.1681,  0.5009,  0.8492)
 ]
-test_kd_tree(points, 1, (0, 0, 0))'''
+test_kd_tree(points, 1, (0, 0, 0))
