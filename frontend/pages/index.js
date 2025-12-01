@@ -1,8 +1,6 @@
 // TODO: Implement airport selector, and pass lat/long to backend
-// TODO: Make sure streaming Voronoi works correctly with multiple updates
 // TODO: Implement 3D Voronoi rendering from backend data
 // Test Yield with GA test function (replace fully_evolve_population +_gen)
-// Send Lauren voronoi geojson format
 
 "use client";
 import { use, useEffect, useRef } from "react";
@@ -19,11 +17,6 @@ export default function Home() {
   const mapRef = useRef(null);
   //const voronoiRef = useRef(null);
 
-
-  // Test GA functions
-  useEffect(() => {
-    test_ga_async();
-  }, []);
 
   useEffect(() => {
     if (globeRef.current) renderMap(globeRef.current, "globe");
@@ -42,6 +35,9 @@ export default function Home() {
       </p>
       <AirportSelector onSelect={(airport) => {
         console.log("Selected airport:", airport);
+
+        // Trigger GA test with selected airport 
+        test_ga_async(airport.airport.name, airport.airport.lat, airport.airport.lon, airport.generations, airport.cells, airport.radius);
       }}></AirportSelector>
       <div className={styles.container}>
         <div ref={globeRef} />
@@ -51,20 +47,20 @@ export default function Home() {
   );
 }
 
-function test_ga() {
-  fetch("api/test/ga")
-    .then(response => response.json())
-    .then(data => {
-      console.log("GA Test Result:", data);
-    })
-    .catch(error => {
-      console.error("Error fetching GA test data:", error);
-    });
-}
 
-async function test_ga_async() {
-  console.log("Starting GA async test...");
-  const eventSource = new EventSource("http://localhost:8080/test/ga_async");
+async function test_ga_async(airport, lat, lon, generations, cells, radius) {
+  console.log("Starting GA async flight vornonoi generation...");
+
+  const url = new URL("http://localhost:8080/flight/ga_async");
+  // Attach all user-selected parameters
+  url.searchParams.set("airport", airport);
+  url.searchParams.set("lat", lat);
+  url.searchParams.set("lon", lon);
+  url.searchParams.set("generations", generations);
+  url.searchParams.set("cells", cells);
+  url.searchParams.set("radius", radius);
+
+  const eventSource = new EventSource(url);
 
 
   eventSource.onmessage = function (event) {
