@@ -428,6 +428,12 @@ def flight_ga(
         s += f"\n\tfitness: {organism.fitness}"
 
         return s
+    
+    def to_json(organism):
+        return {
+            "chromosomes": [ _decode_chromosome(c) for c in organism.chromosomes],
+            "fitness": organism.fitness,
+        }
 
     def _crossover_mutate_chromosomes(chromosome1, chromosome2, mutation=0.20):
         child_chromosome = np.zeros(2, dtype=np.dtypes.StringDType)
@@ -514,7 +520,7 @@ def flight_ga(
     print(f"{fittest}")
 
     # Return each generation's fittest organism as JSON
-    return fittest.to_json()
+    return to_json(fittest)
 
 # Async version of flight GA
 async def generate_flight_ga_async(   
@@ -620,6 +626,13 @@ async def generate_flight_ga_async(
         s += f"\n\tfitness: {organism.fitness}"
 
         return s
+    
+    # Special decode to JSON function for flight GA organism
+    def to_json(organism):
+        return {
+            "chromosomes": [ _decode_chromosome(c) for c in organism.chromosomes],
+            "fitness": organism.fitness,
+        }
 
     def _crossover_mutate_chromosomes(chromosome1, chromosome2, mutation=0.20):
         child_chromosome = np.zeros(2, dtype=np.dtypes.StringDType)
@@ -707,7 +720,7 @@ async def generate_flight_ga_async(
         await asyncio.sleep(0.0)  # Simulate async behavior
         yield {
             "generation": generation,
-            "organism": organism.to_json()
+            "organism": to_json(organism)
         }
 
     # End of generator

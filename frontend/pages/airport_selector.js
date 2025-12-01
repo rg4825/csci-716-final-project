@@ -11,8 +11,8 @@ export default function AirportSelector({ onSelect }) {
 
     // New state for simulation parameters
     const [generations, setGenerations] = useState(1);
-    const [cells, setCells] = useState(1);
-    const [radius, setRadius] = useState(1);
+    const [cells, setCells] = useState(5);
+    const [radius, setRadius] = useState(50);
 
     // Load airports.csv once
     useEffect(() => {
@@ -113,7 +113,7 @@ export default function AirportSelector({ onSelect }) {
                     Generations:
                     <input
                         type="number"
-                        min="1"
+                        min="0"
                         value={generations}
                         onChange={e => setGenerations(parseInt(e.target.value) || 1)}
                         style={{ width: "100%", padding: "6px" }}
@@ -124,7 +124,7 @@ export default function AirportSelector({ onSelect }) {
                     Number of Cells:
                     <input
                         type="number"
-                        min="1"
+                        min="0"
                         value={cells}
                         onChange={e => setCells(parseInt(e.target.value) || 1)}
                         style={{ width: "100%", padding: "6px" }}
@@ -135,7 +135,7 @@ export default function AirportSelector({ onSelect }) {
                     Radius:
                     <input
                         type="number"
-                        min="1"
+                        min="0"
                         value={radius}
                         onChange={e => setRadius(parseInt(e.target.value) || 1)}
                         style={{ width: "100%", padding: "6px" }}
