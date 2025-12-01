@@ -15,13 +15,13 @@ export default function Home() {
   // Refs for the three visualizations
   const globeRef = useRef(null);
   const mapRef = useRef(null);
-  //const voronoiRef = useRef(null);
-
+  const twoDRef = useRef(null);
+  const updateGlobeRef = useRef(null);
+  const updateFlatMapRef = useRef(null);
 
   useEffect(() => {
-    if (globeRef.current) renderMap(globeRef.current, "globe");
-    if (mapRef.current) renderMap(mapRef.current, "flat");
-    //if (voronoiRef.current) render2d(voronoiRef.current);
+    if (globeRef.current) renderMap(globeRef.current, "globe", updateGlobeRef);
+    if (mapRef.current) renderMap(mapRef.current, "flat", updateFlatMapRef);
   }, []);
 
   return (
@@ -37,18 +37,29 @@ export default function Home() {
         console.log("Selected airport:", airport);
 
         // Trigger GA test with selected airport 
-        test_ga_async(airport.airport.name, airport.airport.lat, airport.airport.lon, airport.generations, airport.cells, airport.radius);
+        test_ga_async(
+          airport.airport.name,
+          airport.airport.lat,
+          airport.airport.lon,
+          airport.generations,
+          airport.cells,
+          airport.radius,
+          updateGlobeRef,
+          updateFlatMapRef
+        );
       }}></AirportSelector>
+
       <div className={styles.container}>
         <div ref={globeRef} />
         <div ref={mapRef} />
       </div>
+      <div ref={twoDRef} className={styles.twoDContainer} />
     </main>
   );
 }
 
 
-async function test_ga_async(airport, lat, lon, generations, cells, radius) {
+async function test_ga_async(airport, lat, lon, generations, cells, radius, updateGlobeRef, updateFlatMapRef) {
   console.log("Starting GA async flight vornonoi generation...");
 
   const url = new URL("http://localhost:8080/flight/ga_async");
@@ -69,11 +80,20 @@ async function test_ga_async(airport, lat, lon, generations, cells, radius) {
 
     if (data.event === "end") {
       console.log("GA async stream finished normally.");
-      eventSource.close();   // avoid the browser triggering error event
+      eventSource.close();
       return;
     }
 
     console.log("GA async data from backend:", data);
+
+    // Update 2D Voronoi visualization
+    if (updateGlobeRef.current) {
+      updateGlobeRef.current(data);
+    }
+    if (updateFlatMapRef.current) {
+      updateFlatMapRef.current(data);
+    }
+
   };
 
   console.log("GA async test setup complete.");
@@ -88,145 +108,9 @@ async function test_ga_async(airport, lat, lon, generations, cells, radius) {
 
 }
 
-/** 2D Voronoi specific renderer **/
-async function render2d(container) {
-  // --- Setup ---
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  d3.select(container).selectAll("*").remove();
-  let voronoi = null;
-
-  // Streaming response from backend
-  const eventSource = new EventSource("api/voronoi/stream");
-
-  eventSource.onmessage = function (event) {
-    console.log("Received Voronoi update:", event.data);
-    const data = JSON.parse(event.data);
-    console.log("Step data from backend:", data.step);
-    // Update the visualization with new Voronoi data
-    // Parse the inner JSON
-    voronoi = JSON.parse(data.voronoi_polygons);
-    console.log("Parsed Voronoi lines from backend:", voronoi);
-
-    const svg = d3.select(container)
-      .append("svg")
-      .attr("width", width)
-      .attr("height", height);
-
-    // Create scales to map Voronoi coordinates to SVG coordinates
-    const xScale = d3.scaleLinear()
-      .domain([0, 40])  // Voronoi coordinate range
-      .range([0, width]);
-
-    const yScale = d3.scaleLinear()
-      .domain([0, 40])
-      .range([0, height]);
-
-    // --- Draw Voronoi edges as lines ---
-    svg.append("g")
-      .attr("class", styles.voronoiGroup)
-      .selectAll("line")
-      .data(voronoi.lines)
-      .enter()
-      .append('line')
-      .attr('x1', d => xScale(d.geometry.coordinates[0][0]))
-      .attr('y1', d => yScale(d.geometry.coordinates[0][1]))
-      .attr('x2', d => xScale(d.geometry.coordinates[1][0]))
-      .attr('y2', d => yScale(d.geometry.coordinates[1][1]))
-      .attr('class', styles.voronoiCell);
-
-    // --- Draw seeds as circles ---
-    svg.append("g")
-      .selectAll("circle")
-      .data(voronoi.seeds)
-      .enter()
-      .append("circle")
-      .attr("cx", d => xScale(d.geometry.coordinates[0]))
-      .attr("cy", d => yScale(d.geometry.coordinates[1]))
-      .attr("r", 10) // radius
-      .attr("class", styles.airport);
-  };
-
-  eventSource.onerror = function (event) {
-    if (eventSource.readyState === EventSource.CLOSED) {
-      console.log("Stream closed normally.");
-    } else {
-      console.error("Stream error:", event);
-    }
-  };
-
-
-  /*
-  // Seeds to send to backend
-  let seeds = [[10, 10], [20, 20], [30, 10], [20, 5], [25, 15]];
-
-  // Call the backend with POST request
-  fetch("api/voronoi/2dexample", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      seeds: seeds,
-      min_x: 0,
-      min_y: 0,
-      max_x: width,
-      max_y: height
-    })
-  })
-    .then(response => response.json())
-    .then(data => {
-      // Parse the inner JSON
-      voronoi = JSON.parse(data.voronoi_polygons);
-      console.log("Parsed Voronoi lines from backend:", voronoi);
-
-
-      const svg = d3.select(container)
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
-
-      // Create scales to map Voronoi coordinates to SVG coordinates
-      const xScale = d3.scaleLinear()
-        .domain([0, 40])  // Voronoi coordinate range
-        .range([0, width]);
-
-      const yScale = d3.scaleLinear()
-        .domain([0, 40])
-        .range([0, height]);
-
-      // --- Draw Voronoi edges as lines ---
-      svg.append("g")
-        .attr("class", styles.voronoiGroup)
-        .selectAll("line")
-        .data(voronoi.features)
-        .enter()
-        .append('line')
-        .attr('x1', d => xScale(d.geometry.coordinates[0][0]))
-        .attr('y1', d => yScale(d.geometry.coordinates[0][1]))
-        .attr('x2', d => xScale(d.geometry.coordinates[1][0]))
-        .attr('y2', d => yScale(d.geometry.coordinates[1][1]))
-        .attr('class', styles.voronoiCell);
-
-      // --- Draw seeds as circles ---
-      svg.append("g")
-        .selectAll("circle")
-        .data(seeds)
-        .enter()
-        .append("circle")
-        .attr("cx", d => xScale(d[0]))
-        .attr("cy", d => yScale(d[1]))
-        .attr("r", 10) // radius
-        .attr("class", styles.airport);
-    })
-    .catch(error => {
-      console.error("Error fetching Voronoi data:", error);
-    });
-    */
-}
 
 /** --- Generalized map renderer --- **/
-async function renderMap(container, type = "globe") {
+async function renderMap(container, type = "globe", updateFnRef) {
   // --- Setup ---
   const width = container.clientWidth;
   const height = container.clientHeight;
@@ -307,6 +191,59 @@ async function renderMap(container, type = "globe") {
 
   console.log(voronoi.polygons().features);
 
+  // --- Setup update function ---
+  updateFnRef.current = function (data) {
+    console.log("Updating Voronoi diagram with backend GA data:", data);
+
+    clearVoronoi(svg);
+
+    // Extract SEEDS from backend
+    const seedFeatures = data.voronoi_edges.seeds;
+
+    const seeds = seedFeatures.map(f => {
+      const [lat, lon] = f.geometry.coordinates;
+      return { lat: lat, lon: lon };
+    });
+
+    // Extract POLYGONS from backend
+    //const polygons = data.voronoi_edges.polygons; // already valid GeoJSON Features
+    const polygons = data.voronoi_edges.polygons.map(f => {
+      const ring = f.geometry.coordinates.map(([lat, lon]) => [lon, lat]);
+
+      return {
+        type: "Feature",
+        geometry: {
+          type: "Polygon",
+          coordinates: [ring]  // wrap ring!
+        }
+      };
+    });
+
+    // Draw NEW seed points
+    svg.append("g")
+      .attr("class", "seedGroup")
+      .selectAll("circle")
+      .data(seeds)
+      .enter()
+      .append("circle")
+      .attr("class", styles.airport)
+      .attr("cx", d => projection([d.lat, d.lon])[0])
+      .attr("cy", d => projection([d.lat, d.lon])[1]);
+
+    // Draw NEW Voronoi cells
+    svg.append("g")
+      .attr("class", styles.voronoiGroup)
+      .selectAll("path")
+      .data(polygons)
+      .enter()
+      .append("path")
+      .attr("class", styles.voronoiCell)
+      .attr("d", path);
+
+    console.log("Polygon sample:", polygons[0]);
+    console.log("Path result:", path(polygons[0]));
+  };
+
   // --- Interaction ---
   addInteraction(svg, projection, path, width, height, type);
 
@@ -340,7 +277,7 @@ function createProjection(type, width, height) {
 /** --- Globe Rotation --- **/
 function addInteraction(svg, projection, path, width, height, type) {
   const minZoom = projection.scale();
-  const maxZoom = minZoom * 8;
+  const maxZoom = minZoom * 100;
 
   const zoom = d3.zoom()
     .scaleExtent([minZoom, maxZoom])
@@ -388,4 +325,10 @@ function refresh(svg, path) {
     .attr("cx", d => path.projection()([d.lon, d.lat])[0])
     .attr("cy", d => path.projection()([d.lon, d.lat])[1]);
   svg.selectAll(`.${styles.voronoiCell}`).attr("d", path);
+}
+
+/**--- Clear Points and Cells --- */
+function clearVoronoi(svg) {
+  svg.selectAll(`.${styles.voronoiCell}`).remove();
+  svg.selectAll("circle").remove();
 }

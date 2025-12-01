@@ -633,6 +633,26 @@ async def generate_flight_ga_async(
             "chromosomes": [ _decode_chromosome(c) for c in organism.chromosomes],
             "fitness": organism.fitness,
         }
+    
+    # Special method to convert KDTree to JSON-serializable format
+    def KDTree_to_json(kd_tree):
+        return {
+            "data": kd_tree.data.tolist(),
+        }
+    
+    # Special method to convert Voronoi edges to JSON-serializable format
+    def voronoi_edges_to_geojson(voronoi_edges):
+        seed_info = [
+            min(seeds, key=lambda p: p[0])[0],
+            min(seeds, key=lambda p: p[1])[1],
+            max(seeds, key=lambda p: p[0])[0],
+            max(seeds, key=lambda p: p[1])[1]
+        ]
+
+        geojson_dict = {"type": "FeatureCollection", "polygons": [], "seeds": []}
+        for cell in voronoi_edges.values():
+            cell.cell_to_geojson(x_min, y_min, x_max, y_max, seed_info, geojson_dict)
+        return geojson_dict
 
     def _crossover_mutate_chromosomes(chromosome1, chromosome2, mutation=0.20):
         child_chromosome = np.zeros(2, dtype=np.dtypes.StringDType)
@@ -718,9 +738,24 @@ async def generate_flight_ga_async(
     # Yield each generation's fittest organism as JSON
     for organism, generation in population.fully_evolve_population_generator():
         await asyncio.sleep(0.0)  # Simulate async behavior
+
+        # Convert organism to Voronoi 
+        seed_tree, voronoi_edges = organism_to_voronoi(organism)
+        
+        # Convert voronoi edges to JSON-serializable format
+        voronoi_edges_json = voronoi_edges_to_geojson(voronoi_edges)
+
+
+        print(f"Generation {generation}, Organism: {organism}")
+        print(f"Voronoi Edges: {voronoi_edges_json}")
+
+        # Yield voronoi diagram data
+        # TODO: Yield flights as well!
         yield {
             "generation": generation,
-            "organism": to_json(organism)
+            "organism": to_json(organism),
+            "seed_tree": KDTree_to_json(seed_tree), # KD Tree
+            "voronoi_edges": voronoi_edges_json, # dictionary of seed points and Voronoi cells
         }
 
     # End of generator
