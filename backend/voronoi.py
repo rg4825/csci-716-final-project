@@ -669,5 +669,5 @@ def test_kd_tree(seeds, min_x, min_y, max_x, max_y):
     print(voronoi_geojson)
     
 
-seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
-test_kd_tree(seeds, 0, 0, 40, 40)
+'''seeds = [(10, 10), (20, 20), (30, 10), (20, 5), (25, 15)]
+test_kd_tree(seeds, 0, 0, 40, 40)'''
