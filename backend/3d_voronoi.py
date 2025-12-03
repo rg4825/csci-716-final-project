@@ -129,18 +129,13 @@ def build_initial_tetrahedron(points, dcel):
         dcel: the DCEL object to add to
     """
     vertices = []
-    half_edges = []
     for p in points:
         v = dcel.create_vertex(p[0], p[1], p[2])
         vertices.append(v)
     dcel.find_inner_point(points)
     for i in range(len(vertices)):
         tmp = vertices[:i] + vertices[i+1:]
-        f, he1, he2, he3 = dcel.create_face(tmp[0], tmp[1], tmp[2])
-        half_edges.append(he1)
-        half_edges.append(he2)
-        half_edges.append(he3)
-    dcel.find_twins(half_edges)
+        dcel.create_face(tmp[0], tmp[1], tmp[2])
 
 
 def convex_hull_3d(points):
@@ -157,7 +152,6 @@ def convex_hull_3d(points):
     # build tetrahedron from first four points
     build_initial_tetrahedron(points[:4], dcel)
     for p in points[4:]:
-        # iterate t
         dcel.add_point(p[0], p[1], p[2])
     return dcel
 
@@ -277,7 +271,7 @@ def test_kd_tree(seeds, radius, center):
     print(voronoi_geojson)
 
 
-'''points = [
+points = [
     (0.0000,  0.0000,  1.0000),
     (0.5257,  0.0000,  0.8507),
     (-0.5209, -0.3478,  0.7793),
@@ -298,4 +292,4 @@ def test_kd_tree(seeds, radius, center):
     (0.2594, -0.4004, -0.8788),
     (-0.1681,  0.5009,  0.8492)
 ]
-test_kd_tree(points, 1, (0, 0, 0))'''
+test_kd_tree(points, 1, (0, 0, 0))

@@ -214,6 +214,7 @@ class DCEL:
     def __init__(self):
         self.vertices = set()
         self.half_edges = set()
+        self.edge_dict = {} # to help match up neighbors more efficiently
         self.faces = set()
         self.inner_point = None
 
@@ -295,8 +296,6 @@ class DCEL:
             v1: the first vertex of the face
             v2: the second vertex of the face
             v3: the third vertex of the face
-        Returns:
-            the face and three half-edges created
         """
         # order v1, v2, v3 so that they are CCW
         if self.inner_point:
@@ -325,25 +324,29 @@ class DCEL:
         self.half_edges.add(he2)
         self.half_edges.add(he3)
         self.faces.add(f)
-        return f, he1, he2, he3
+        # add twin relationships if they exist:
+        twin1 = self.edge_dict.get((he1.next.org, he1.org))
+        if twin1:
+            he1.twin = twin1
+            twin1.twin = he1
+            self.edge_dict.pop((he1.next.org, he1.org))
+        else:
+            self.edge_dict[(he1.org, he1.next.org)] = he1
+        twin2 = self.edge_dict.get((he2.next.org, he2.org))
+        if twin2:
+            he2.twin = twin2
+            twin2.twin = he2
+            self.edge_dict.pop((he2.next.org, he2.org))
+        else:
+            self.edge_dict[(he2.org, he2.next.org)] = he2
+        twin3 = self.edge_dict.get((he3.next.org, he3.org))
+        if twin3:
+            he3.twin = twin3
+            twin3.twin = he3
+            self.edge_dict.pop((he3.next.org, he3.org))
+        else:
+            self.edge_dict[(he3.org, he3.next.org)] = he3
 
-    def find_twins(self, new_half_edges):
-        """
-        Forms the twin relationships between the half-edges provided
-        and the existing ones
-        Args:
-            new_half_edges: list of half edges that were created and don't
-            have twins assigned to them yet
-        """
-        for he1 in self.half_edges:
-            for he2 in new_half_edges:
-                if (
-                    (he1.org == he2.next.org) and
-                    (he2.org == he1.next.org)
-                ):
-                    he1.twin = he2
-                    he2.twin = he1
-                    break
 
     def add_point(self, x, y, z):
         """
@@ -364,7 +367,6 @@ class DCEL:
             self.vertices.discard(v)
         else:
             border = set()
-            half_edges = []
             for face in visible_faces:
                 # find which edges form the border
                 edges = face.get_edges()
@@ -375,19 +377,10 @@ class DCEL:
                 # remove unnecessary faces and edges
                 edges = face.get_edges()
                 for he in edges:
-                    if he not in border:
-                        if he.twin:
-                            he.twin = None
-                        self.half_edges.discard(he)
+                    if he in border:
+                        v1 = he.org
+                        v2 = he.twin.org
+                        self.edge_dict[(v2, v1)] = he.twin
+                        self.create_face(v1, v2, v)
+                    self.half_edges.discard(he)
                 self.faces.discard(face)
-            for he in border:
-                # replace border edges
-                v1 = he.org
-                v2 = he.twin.org
-                he.twin = None
-                self.half_edges.discard(he)
-                f, he1, he2, he3 = self.create_face(v1, v2, v)
-                half_edges.append(he1)
-                half_edges.append(he2)
-                half_edges.append(he3)
-            self.find_twins(half_edges)
