@@ -104,6 +104,14 @@
   pointer-events: none;
 }
 
+.boundingBox {
+  fill: none;
+  stroke: black;
+  stroke-width: 1px;
+  stroke-dasharray: 4 2;
+  pointer-events: none;
+}
+
 /*
 .countriesGroup {
   pointer-events: none;
