@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "d3-geo-polygon": "^2.0.1"
+  }
+}

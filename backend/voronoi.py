@@ -495,10 +495,11 @@ def _voronoi_from_triangulation(triangulation, min_x, min_y, max_x, max_y):
 
 def _store_edges_as_geo_json(seeds, voronoi_edges):
     """
-    :param seeds:           a list of tuples representing x, y coordinates
+    :param seeds:           a list of tuples representing lon, lat coordinates
     :param voronoi_edges:   a list representing all voronoi edges
     :return:                a geojson object of the edges of the voronoi diagram
     """
+    # NOTE: GeoJSON format uses [lon, lat] (x, y)
     voronoi_lines = {"type": "FeatureCollection", "lines": [], "seeds": []}
     for edge in voronoi_edges:
         voronoi_lines["lines"].append(
@@ -507,8 +508,8 @@ def _store_edges_as_geo_json(seeds, voronoi_edges):
                 "geometry": {
                     "type": "LineString",
                     "coordinates": [
-                        [edge.p1[0], edge.p1[1]],
-                        [edge.p2[0], edge.p2[1]],
+                        [edge.p1[1], edge.p1[0]],
+                        [edge.p2[1], edge.p2[0]],
                     ],
                 },
                 "properties": {},
@@ -521,7 +522,7 @@ def _store_edges_as_geo_json(seeds, voronoi_edges):
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [seed[0], seed[1]],
+                    "coordinates": [seed[1], seed[0]],
                 },
                 "properties": {"is_seed": True},
             }

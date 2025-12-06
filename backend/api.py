@@ -144,6 +144,9 @@ async def voronoi_stream():
 from genetic_algorithm import Population, Organism
 import numpy as np
 
+
+# --------------- Genetic Algorithm Test Endpoint ---------------
+
 @app.get("/test/ga")
 def test_ga():
     import string
@@ -220,10 +223,11 @@ def test_ga():
     return fittest.to_json()
 
 
-async def generate_ga_async():
+async def generate_ga_async(airport, lat, lon, generations, cells, radius):
     import string
     from genetic_algorithm import Population
 
+    print(f"Generating GA async with airport={airport}, lat={lat}, lon={lon}, generations={generations}, cells={cells}, radius={radius}")
     target = list("Hello, Computational Geometry!")
 
     genome = (
@@ -285,7 +289,7 @@ async def generate_ga_async():
         create_random_organism,
         threshold=0.999,
         generation_size=2000,
-        num_generations=5,
+        num_generations=generations,
         organism_to_string=to_string,
         patience=0,
     )
@@ -304,10 +308,470 @@ async def generate_ga_async():
 
 
 @app.get("/test/ga_async")
-async def test_ga_async():
+async def test_ga_async(
+    airport: str = "Frederick Douglass Greater Rochester International Airport",
+    lat: float = 43.1189, lon: float = -77.672401,
+    generations: int = 10, cells: int = 20,
+    radius: int = 50
+):
     async def event_generator():
-        async for chunk in generate_ga_async():
+        async for chunk in generate_ga_async(airport, lat, lon, generations, cells, radius):
             json_data = json.dumps(chunk) # Convert from dict
             yield f"data: {json_data}\n\n"  # Proper SSE message format
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+# --------------- FLIGHT Genetic Algorithm Test Endpoint ---------------
+
+from open_sky import get_flights_lat_lng, get_flight_trajectories
+MAX_32 = 2**32 - 1
+
+@app.get("/flight/ga")
+def flight_ga(
+    # Rochester Airport (KROC) coordinates
+    airport: str = "Frederick Douglass Greater Rochester International Airport",
+    lat: float = 43.1189, lon: float = -77.672401,
+    generations: int = 10, cells: int = 20,
+    radius: int = 50,
+):
+    flights, bbox = get_flights_lat_lng(lat, lon, radius)
+    trajectories = get_flight_trajectories(flights)
+
+    y_min, x_min, y_max, x_max = bbox[0], bbox[1], bbox[2], bbox[3]
+    x_diff = x_max - x_min
+    y_diff = y_max - y_min
+
+    def _encode_chromosome(x, y):
+        norm_x, norm_y = (x - x_min) / x_diff, (
+            y - y_min
+        ) / y_diff  # normalizes to [0, 1]
+        enc_x, enc_y = np.round(np.multiply(norm_x, MAX_32)).astype(
+            np.uint32
+        ), np.round(np.multiply(norm_y, MAX_32)).astype(
+            np.uint32
+        )  # uniformly maps to uint32, a small amount of precision loss
+        x_bin, y_bin = np.binary_repr(enc_x, width=32), np.binary_repr(
+            enc_y, width=32
+        )  # 32 bit binary representation of uint32
+        return x_bin, y_bin
+
+    def _decode_chromosome(chromosome):
+        enc_x, enc_y = np.uint32(int(chromosome[0], 2)), np.uint32(
+            int(chromosome[1], 2)
+        )
+        norm_x, norm_y = np.divide(enc_x, MAX_32), np.divide(enc_y, MAX_32)
+        x, y = x_min + norm_x * x_diff, y_min + norm_y * y_diff
+        return float(x), float(y)
+
+    def organism_to_voronoi(organism):
+        """
+        :param organism:    organism for the voronoi flight task
+        :return:            seed_tree, voronoi_edges from compute_voronoi_tree
+        """
+        seeds = [_decode_chromosome(c) for c in organism.chromosomes]
+        seed_tree, voronoi_edges = compute_voronoi_tree(
+            seeds, x_min, y_min, x_max, y_max
+        )
+        return seed_tree, voronoi_edges
+
+    def fitness_func(chromosomes):
+        seeds = [_decode_chromosome(c) for c in chromosomes]
+        cell_duration_dict = dict.fromkeys(seeds, 0)
+        total_flights_in_cell = dict.fromkeys(seeds, 0)
+
+        seed_tree, voronoi_edges = compute_voronoi_tree(
+            seeds, x_min, y_min, x_max, y_max
+        )
+        for t in trajectories:
+            cell_counter = dict.fromkeys(seeds, 0)
+            prev_cell = None
+            prev_waypoint = None
+
+            for waypoint in t.itertuples():
+                if waypoint.latitude < x_min or waypoint.latitude > x_max or waypoint.longitude < y_min or waypoint.longitude > y_max:
+                    continue
+                cell = find_closest_cell(seed_tree, seeds, (waypoint.latitude, waypoint.longitude))
+
+                if cell_counter[cell] == 0:
+                    cell_counter[cell] += 1
+
+                if cell == prev_cell:
+                    cell_duration_dict[cell] += (waypoint.timestamp - prev_waypoint.timestamp).seconds
+                    prev_cell = cell
+                    prev_waypoint = waypoint
+                    continue
+
+                prev_cell = cell
+                prev_waypoint = waypoint
+
+            for seed in seeds:
+                total_flights_in_cell[seed] += cell_counter[seed]
+
+        min_avg_flight_time = float('inf')
+        for seed in seeds:
+            duration = cell_duration_dict[seed]
+            if duration == 0:
+                continue  # I am assuming that we skip if it's 0, but we could theoretically say it's 0 and then break
+
+            num_flights = total_flights_in_cell[seed]
+            avg_flight_time = duration/num_flights
+
+            if avg_flight_time < min_avg_flight_time:
+                min_avg_flight_time = avg_flight_time
+
+        return -min_avg_flight_time
+
+    def to_string(organism):
+        s = "\n\tchromosomes:"
+        for chromosome in organism.chromosomes:
+            s += f"\n\t\t{_decode_chromosome(chromosome)}"
+        s += f"\n\tfitness: {organism.fitness}"
+
+        return s
+    
+    def to_json(organism):
+        return {
+            "chromosomes": [ _decode_chromosome(c) for c in organism.chromosomes],
+            "fitness": organism.fitness,
+        }
+
+    def _crossover_mutate_chromosomes(chromosome1, chromosome2, mutation=0.20):
+        child_chromosome = np.zeros(2, dtype=np.dtypes.StringDType)
+        rng = np.random.default_rng()
+
+        for i in range(len(chromosome1[0])):
+            x1, y1 = chromosome1[0][i], chromosome1[1][i]
+            x2, y2 = chromosome2[0][i], chromosome2[1][i]
+
+            px = rng.random()
+            py = rng.random()
+            px_mutate = rng.random()
+            py_mutate = rng.random()
+
+            if px < 0.50:
+                child_chromosome[0] += x1
+            else:
+                child_chromosome[0] += x2
+
+            if py < 0.50:
+                child_chromosome[1] += y1
+            else:
+                child_chromosome[1] += y2
+
+            if px_mutate < mutation:
+                mutate_val = (int(child_chromosome[0][i]) + 1) % 2
+                child_chromosome[0] = child_chromosome[0][:-1] + str(mutate_val)
+
+            if py_mutate < mutation:
+                mutate_val = (int(child_chromosome[1][i]) + 1) % 2
+                child_chromosome[1] = child_chromosome[1][:-1] + str(mutate_val)
+
+        return child_chromosome
+
+    def reproduce_func(o1, o2, mutation=0.20):
+        child_chromosomes = np.array(
+            [
+                _crossover_mutate_chromosomes(chrom1, chrom2, mutation)
+                for chrom1, chrom2 in zip(o1.chromosomes, o2.chromosomes)
+            ],
+            dtype=np.dtypes.StringDType,
+        )
+        child_chromosomes = np.array(
+            [_decode_chromosome(row) for row in child_chromosomes]
+        )
+        child_chromosomes = child_chromosomes[child_chromosomes[:, 0].argsort()]
+        child_chromosomes = np.array(
+            [_encode_chromosome(row[0], row[1]) for row in child_chromosomes],
+            dtype=np.dtypes.StringDType,
+        )
+
+        return Organism(child_chromosomes, o1.fitness_func, to_string=o1.to_string)
+
+    def create_random_organism():
+        chromosomes = np.zeros((cells, 2))
+        rng = np.random.default_rng()
+
+        for i in range(cells):
+            x, y = rng.uniform(x_min, x_max), rng.uniform(y_min, y_max)
+            chromosomes[i] = x, y
+
+        chromosomes = chromosomes[chromosomes[:, 0].argsort()]
+        chromosomes = np.array(
+            [_encode_chromosome(row[0], row[1]) for row in chromosomes],
+            dtype=np.dtypes.StringDType,
+        )
+
+        return Organism(
+            chromosomes,
+            fitness_func,
+            to_string=to_string,
+        )
+
+    population = Population(
+        32,
+        fitness_func,
+        reproduce_func,
+        create_random_organism,
+        num_generations=generations,
+        organism_to_string=to_string,
+    )
+
+    fittest = population.fully_evolve_population()
+    print(f"{fittest}")
+
+    # Return each generation's fittest organism as JSON
+    return to_json(fittest)
+
+# Async version of flight GA
+async def generate_flight_ga_async(   
+    # Rochester Airport (KROC) coordinates
+    airport: str = "Frederick Douglass Greater Rochester International Airport",
+    lat: float = 43.1189, lon: float = -77.672401,
+    generations: int = 10, cells: int = 20,
+    radius: int = 50
+):  
+    print(f"Generating Flight GA async with airport={airport}, lat={lat}, lon={lon}, generations={generations}, cells={cells}, radius={radius}")
+
+    flights, bbox = get_flights_lat_lng(lat, lon, radius)
+    trajectories = get_flight_trajectories(flights)
+
+    y_min, x_min, y_max, x_max = bbox[0], bbox[1], bbox[2], bbox[3]
+    x_diff = x_max - x_min
+    y_diff = y_max - y_min
+
+    def _encode_chromosome(x, y):
+        norm_x, norm_y = (x - x_min) / x_diff, (
+            y - y_min
+        ) / y_diff  # normalizes to [0, 1]
+        enc_x, enc_y = np.round(np.multiply(norm_x, MAX_32)).astype(
+            np.uint32
+        ), np.round(np.multiply(norm_y, MAX_32)).astype(
+            np.uint32
+        )  # uniformly maps to uint32, a small amount of precision loss
+        x_bin, y_bin = np.binary_repr(enc_x, width=32), np.binary_repr(
+            enc_y, width=32
+        )  # 32 bit binary representation of uint32
+        return x_bin, y_bin
+
+    def _decode_chromosome(chromosome):
+        enc_x, enc_y = np.uint32(int(chromosome[0], 2)), np.uint32(
+            int(chromosome[1], 2)
+        )
+        norm_x, norm_y = np.divide(enc_x, MAX_32), np.divide(enc_y, MAX_32)
+        x, y = x_min + norm_x * x_diff, y_min + norm_y * y_diff
+        return float(x), float(y)
+
+    def organism_to_voronoi(organism):
+        """
+        :param organism:    organism for the voronoi flight task
+        :return:            seed_tree, voronoi_edges from compute_voronoi_tree
+        """
+        seeds = [_decode_chromosome(c) for c in organism.chromosomes]
+        seed_tree, voronoi_edges = compute_voronoi_tree(
+            seeds, x_min, y_min, x_max, y_max
+        )
+        return seed_tree, voronoi_edges
+
+    def fitness_func(chromosomes):
+        seeds = [_decode_chromosome(c) for c in chromosomes]
+        cell_duration_dict = dict.fromkeys(seeds, 0)
+        total_flights_in_cell = dict.fromkeys(seeds, 0)
+
+        seed_tree, voronoi_edges = compute_voronoi_tree(
+            seeds, x_min, y_min, x_max, y_max
+        )
+        for t in trajectories:
+            cell_counter = dict.fromkeys(seeds, 0)
+            prev_cell = None
+            prev_waypoint = None
+
+            for waypoint in t.itertuples():
+                if waypoint.latitude < x_min or waypoint.latitude > x_max or waypoint.longitude < y_min or waypoint.longitude > y_max:
+                    continue
+                cell = find_closest_cell(seed_tree, seeds, (waypoint.latitude, waypoint.longitude))
+
+                if cell_counter[cell] == 0:
+                    cell_counter[cell] += 1
+
+                if cell == prev_cell:
+                    cell_duration_dict[cell] += (waypoint.timestamp - prev_waypoint.timestamp).seconds
+                    prev_cell = cell
+                    prev_waypoint = waypoint
+                    continue
+
+                prev_cell = cell
+                prev_waypoint = waypoint
+
+            for seed in seeds:
+                total_flights_in_cell[seed] += cell_counter[seed]
+
+        min_avg_flight_time = float('inf')
+        for seed in seeds:
+            duration = cell_duration_dict[seed]
+            if duration == 0:
+                continue  # I am assuming that we skip if it's 0, but we could theoretically say it's 0 and then break
+
+            num_flights = total_flights_in_cell[seed]
+            avg_flight_time = duration/num_flights
+
+            if avg_flight_time < min_avg_flight_time:
+                min_avg_flight_time = avg_flight_time
+
+        return -min_avg_flight_time
+
+    def to_string(organism):
+        s = "\n\tchromosomes:"
+        for chromosome in organism.chromosomes:
+            s += f"\n\t\t{_decode_chromosome(chromosome)}"
+        s += f"\n\tfitness: {organism.fitness}"
+
+        return s
+    
+    # Special decode to JSON function for flight GA organism
+    def to_json(organism):
+        return {
+            "chromosomes": [ _decode_chromosome(c) for c in organism.chromosomes],
+            "fitness": organism.fitness,
+        }
+    
+    # Special method to convert KDTree to JSON-serializable format
+    def KDTree_to_json(kd_tree):
+        return {
+            "data": kd_tree.data.tolist(),
+        }
+    
+    # Special method to convert Voronoi edges to JSON-serializable format
+    def voronoi_edges_to_geojson(voronoi_edges):
+        seed_info = [
+            min(seeds, key=lambda p: p[0])[0],
+            min(seeds, key=lambda p: p[1])[1],
+            max(seeds, key=lambda p: p[0])[0],
+            max(seeds, key=lambda p: p[1])[1]
+        ]
+
+        geojson_dict = {"type": "FeatureCollection", "polygons": [], "seeds": []}
+        for cell in voronoi_edges.values():
+            cell.cell_to_geojson(x_min, y_min, x_max, y_max, seed_info, geojson_dict)
+        return geojson_dict
+
+    def _crossover_mutate_chromosomes(chromosome1, chromosome2, mutation=0.20):
+        child_chromosome = np.zeros(2, dtype=np.dtypes.StringDType)
+        rng = np.random.default_rng()
+
+        for i in range(len(chromosome1[0])):
+            x1, y1 = chromosome1[0][i], chromosome1[1][i]
+            x2, y2 = chromosome2[0][i], chromosome2[1][i]
+
+            px = rng.random()
+            py = rng.random()
+            px_mutate = rng.random()
+            py_mutate = rng.random()
+
+            if px < 0.50:
+                child_chromosome[0] += x1
+            else:
+                child_chromosome[0] += x2
+
+            if py < 0.50:
+                child_chromosome[1] += y1
+            else:
+                child_chromosome[1] += y2
+
+            if px_mutate < mutation:
+                mutate_val = (int(child_chromosome[0][i]) + 1) % 2
+                child_chromosome[0] = child_chromosome[0][:-1] + str(mutate_val)
+
+            if py_mutate < mutation:
+                mutate_val = (int(child_chromosome[1][i]) + 1) % 2
+                child_chromosome[1] = child_chromosome[1][:-1] + str(mutate_val)
+
+        return child_chromosome
+
+    def reproduce_func(o1, o2, mutation=0.20):
+        child_chromosomes = np.array(
+            [
+                _crossover_mutate_chromosomes(chrom1, chrom2, mutation)
+                for chrom1, chrom2 in zip(o1.chromosomes, o2.chromosomes)
+            ],
+            dtype=np.dtypes.StringDType,
+        )
+        child_chromosomes = np.array(
+            [_decode_chromosome(row) for row in child_chromosomes]
+        )
+        child_chromosomes = child_chromosomes[child_chromosomes[:, 0].argsort()]
+        child_chromosomes = np.array(
+            [_encode_chromosome(row[0], row[1]) for row in child_chromosomes],
+            dtype=np.dtypes.StringDType,
+        )
+
+        return Organism(child_chromosomes, o1.fitness_func, to_string=o1.to_string)
+
+    def create_random_organism():
+        chromosomes = np.zeros((cells, 2))
+        rng = np.random.default_rng()
+
+        for i in range(cells):
+            x, y = rng.uniform(x_min, x_max), rng.uniform(y_min, y_max)
+            chromosomes[i] = x, y
+
+        chromosomes = chromosomes[chromosomes[:, 0].argsort()]
+        chromosomes = np.array(
+            [_encode_chromosome(row[0], row[1]) for row in chromosomes],
+            dtype=np.dtypes.StringDType,
+        )
+
+        return Organism(
+            chromosomes,
+            fitness_func,
+            to_string=to_string,
+        )
+
+    population = Population(
+        32,
+        fitness_func,
+        reproduce_func,
+        create_random_organism,
+        num_generations=generations,
+        organism_to_string=to_string,
+    )
+
+    # Yield each generation's fittest organism as JSON
+    for organism, generation in population.fully_evolve_population_generator():
+        await asyncio.sleep(0.0)  # Simulate async behavior
+
+        # Convert organism to Voronoi 
+        seed_tree, voronoi_edges = organism_to_voronoi(organism)
+        
+        # Convert voronoi edges to JSON-serializable format
+        voronoi_edges_json = voronoi_edges_to_geojson(voronoi_edges)
+
+
+        print(f"Generation {generation}, Organism: {organism}")
+        print(f"Voronoi Edges: {voronoi_edges_json}")
+
+        # Yield voronoi diagram data
+        # TODO: Yield flights as well!
+        yield {
+            "generation": generation,
+            "organism": to_json(organism),
+            "seed_tree": KDTree_to_json(seed_tree), # KD Tree
+            "voronoi_edges": voronoi_edges_json, # dictionary of seed points and Voronoi cells
+        }
+
+    # End of generator
+    yield {"event": "end"}
+    return
+
+@app.get("/flight/ga_async")
+async def flight_ga_async(   
+    airport: str,
+    lat: float, lon: float,
+    generations: int, cells: int,
+    radius: int
+):  
+    async def event_generator():
+        async for chunk in generate_flight_ga_async(airport, lat, lon, generations, cells, radius):
+            json_data = json.dumps(chunk) # Convert from dict
+            yield f"data: {json_data}\n\n"  # Proper SSE message format
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream",)

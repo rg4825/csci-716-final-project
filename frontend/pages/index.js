@@ -1,14 +1,9 @@
-// TODO: Implement airport selector, and pass lat/long to backend
-// TODO: Make sure streaming Voronoi works correctly with multiple updates
-// TODO: Implement 3D Voronoi rendering from backend data
-// Test Yield with GA test function (replace fully_evolve_population +_gen)
-// Send Lauren voronoi geojson format
-
 "use client";
 import { use, useEffect, useRef } from "react";
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import { geoVoronoi } from "d3-geo-voronoi"; // TODO- Replace with file reading
+import { geoClipPolygon } from "d3-geo-polygon";
 import AirportSelector from "./airport_selector"; // Select airport from client side
 
 import styles from "../styles/Home.module.css";
@@ -17,18 +12,13 @@ export default function Home() {
   // Refs for the three visualizations
   const globeRef = useRef(null);
   const mapRef = useRef(null);
-  //const voronoiRef = useRef(null);
-
-
-  // Test GA functions
-  useEffect(() => {
-    test_ga_async();
-  }, []);
+  const twoDRef = useRef(null);
+  const updateGlobeRef = useRef(null);
+  const updateFlatMapRef = useRef(null);
 
   useEffect(() => {
-    if (globeRef.current) renderMap(globeRef.current, "globe");
-    if (mapRef.current) renderMap(mapRef.current, "flat");
-    //if (voronoiRef.current) render2d(voronoiRef.current);
+    if (globeRef.current) renderMap(globeRef.current, "globe", updateGlobeRef);
+    if (mapRef.current) renderMap(mapRef.current, "flat", updateFlatMapRef);
   }, []);
 
   return (
@@ -42,29 +32,43 @@ export default function Home() {
       </p>
       <AirportSelector onSelect={(airport) => {
         console.log("Selected airport:", airport);
+
+        // Trigger GA test with selected airport 
+        test_ga_async(
+          airport.airport.name,
+          airport.airport.lat,
+          airport.airport.lon,
+          airport.generations,
+          airport.cells,
+          airport.radius,
+          updateGlobeRef,
+          updateFlatMapRef
+        );
       }}></AirportSelector>
+
       <div className={styles.container}>
         <div ref={globeRef} />
         <div ref={mapRef} />
       </div>
+      <div ref={twoDRef} className={styles.twoDContainer} />
     </main>
   );
 }
 
-function test_ga() {
-  fetch("api/test/ga")
-    .then(response => response.json())
-    .then(data => {
-      console.log("GA Test Result:", data);
-    })
-    .catch(error => {
-      console.error("Error fetching GA test data:", error);
-    });
-}
 
-async function test_ga_async() {
-  console.log("Starting GA async test...");
-  const eventSource = new EventSource("http://localhost:8080/test/ga_async");
+async function test_ga_async(airport, lat, lon, generations, cells, radius, updateGlobeRef, updateFlatMapRef) {
+  console.log("Starting GA async flight vornonoi generation...");
+
+  const url = new URL("http://localhost:8080/flight/ga_async");
+  // Attach all user-selected parameters
+  url.searchParams.set("airport", airport);
+  url.searchParams.set("lat", lat);
+  url.searchParams.set("lon", lon);
+  url.searchParams.set("generations", generations);
+  url.searchParams.set("cells", cells);
+  url.searchParams.set("radius", radius);
+
+  const eventSource = new EventSource(url);
 
 
   eventSource.onmessage = function (event) {
@@ -73,11 +77,20 @@ async function test_ga_async() {
 
     if (data.event === "end") {
       console.log("GA async stream finished normally.");
-      eventSource.close();   // avoid the browser triggering error event
+      eventSource.close();
       return;
     }
 
     console.log("GA async data from backend:", data);
+
+    // Update 2D Voronoi visualization
+    if (updateGlobeRef.current) {
+      updateGlobeRef.current(data, lat, lon, radius);
+    }
+    if (updateFlatMapRef.current) {
+      updateFlatMapRef.current(data, lat, lon, radius);
+    }
+
   };
 
   console.log("GA async test setup complete.");
@@ -92,145 +105,9 @@ async function test_ga_async() {
 
 }
 
-/** 2D Voronoi specific renderer **/
-async function render2d(container) {
-  // --- Setup ---
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  d3.select(container).selectAll("*").remove();
-  let voronoi = null;
-
-  // Streaming response from backend
-  const eventSource = new EventSource("api/voronoi/stream");
-
-  eventSource.onmessage = function (event) {
-    console.log("Received Voronoi update:", event.data);
-    const data = JSON.parse(event.data);
-    console.log("Step data from backend:", data.step);
-    // Update the visualization with new Voronoi data
-    // Parse the inner JSON
-    voronoi = JSON.parse(data.voronoi_polygons);
-    console.log("Parsed Voronoi lines from backend:", voronoi);
-
-    const svg = d3.select(container)
-      .append("svg")
-      .attr("width", width)
-      .attr("height", height);
-
-    // Create scales to map Voronoi coordinates to SVG coordinates
-    const xScale = d3.scaleLinear()
-      .domain([0, 40])  // Voronoi coordinate range
-      .range([0, width]);
-
-    const yScale = d3.scaleLinear()
-      .domain([0, 40])
-      .range([0, height]);
-
-    // --- Draw Voronoi edges as lines ---
-    svg.append("g")
-      .attr("class", styles.voronoiGroup)
-      .selectAll("line")
-      .data(voronoi.lines)
-      .enter()
-      .append('line')
-      .attr('x1', d => xScale(d.geometry.coordinates[0][0]))
-      .attr('y1', d => yScale(d.geometry.coordinates[0][1]))
-      .attr('x2', d => xScale(d.geometry.coordinates[1][0]))
-      .attr('y2', d => yScale(d.geometry.coordinates[1][1]))
-      .attr('class', styles.voronoiCell);
-
-    // --- Draw seeds as circles ---
-    svg.append("g")
-      .selectAll("circle")
-      .data(voronoi.seeds)
-      .enter()
-      .append("circle")
-      .attr("cx", d => xScale(d.geometry.coordinates[0]))
-      .attr("cy", d => yScale(d.geometry.coordinates[1]))
-      .attr("r", 10) // radius
-      .attr("class", styles.airport);
-  };
-
-  eventSource.onerror = function (event) {
-    if (eventSource.readyState === EventSource.CLOSED) {
-      console.log("Stream closed normally.");
-    } else {
-      console.error("Stream error:", event);
-    }
-  };
-
-
-  /*
-  // Seeds to send to backend
-  let seeds = [[10, 10], [20, 20], [30, 10], [20, 5], [25, 15]];
-
-  // Call the backend with POST request
-  fetch("api/voronoi/2dexample", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      seeds: seeds,
-      min_x: 0,
-      min_y: 0,
-      max_x: width,
-      max_y: height
-    })
-  })
-    .then(response => response.json())
-    .then(data => {
-      // Parse the inner JSON
-      voronoi = JSON.parse(data.voronoi_polygons);
-      console.log("Parsed Voronoi lines from backend:", voronoi);
-
-
-      const svg = d3.select(container)
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
-
-      // Create scales to map Voronoi coordinates to SVG coordinates
-      const xScale = d3.scaleLinear()
-        .domain([0, 40])  // Voronoi coordinate range
-        .range([0, width]);
-
-      const yScale = d3.scaleLinear()
-        .domain([0, 40])
-        .range([0, height]);
-
-      // --- Draw Voronoi edges as lines ---
-      svg.append("g")
-        .attr("class", styles.voronoiGroup)
-        .selectAll("line")
-        .data(voronoi.features)
-        .enter()
-        .append('line')
-        .attr('x1', d => xScale(d.geometry.coordinates[0][0]))
-        .attr('y1', d => yScale(d.geometry.coordinates[0][1]))
-        .attr('x2', d => xScale(d.geometry.coordinates[1][0]))
-        .attr('y2', d => yScale(d.geometry.coordinates[1][1]))
-        .attr('class', styles.voronoiCell);
-
-      // --- Draw seeds as circles ---
-      svg.append("g")
-        .selectAll("circle")
-        .data(seeds)
-        .enter()
-        .append("circle")
-        .attr("cx", d => xScale(d[0]))
-        .attr("cy", d => yScale(d[1]))
-        .attr("r", 10) // radius
-        .attr("class", styles.airport);
-    })
-    .catch(error => {
-      console.error("Error fetching Voronoi data:", error);
-    });
-    */
-}
 
 /** --- Generalized map renderer --- **/
-async function renderMap(container, type = "globe") {
+async function renderMap(container, type = "globe", updateFnRef) {
   // --- Setup ---
   const width = container.clientWidth;
   const height = container.clientHeight;
@@ -267,8 +144,11 @@ async function renderMap(container, type = "globe") {
       .attr("d", path);
   }
 
+  // --- Initialize bounding box ---
+  const bboxGroup = svg.append("g").attr("class", "bboxGroup");
+
   // --- Voronoi cells (optional) ---
-  // Draw seeds for each airport (only if type = large_airport)
+  // Load airport data
   const airports = await d3.csv("/data/airports.csv", d => {
     if (d.type !== "large_airport") return null;
     return {
@@ -278,6 +158,21 @@ async function renderMap(container, type = "globe") {
     };
   });
 
+  // Draw Voronoi cells
+  const seeds = airports.map(airport => [airport.lon, airport.lat]);
+  console.log("Generating Voronoi diagram with", seeds.length, "seeds");
+
+  const voronoi = geoVoronoi(seeds);
+  svg.append("g")
+    .attr("class", styles.voronoiGroup)
+    .selectAll("path")
+    .data(voronoi.polygons().features)
+    .enter()
+    .append('path')
+    .attr('d', path)
+    .attr('class', styles.voronoiCell);
+
+  // Draw seeds for each airport (only if type = large_airport)
   svg
     .append("g")
     .selectAll("circle")
@@ -295,21 +190,88 @@ async function renderMap(container, type = "globe") {
     filter_far_side(svg, projection);
   }
 
-  // Draw Voronoi cells
-  const seeds = airports.map(airport => [airport.lon, airport.lat]);
-  console.log("Generating Voronoi diagram with", seeds.length, "seeds");
-
-  const voronoi = geoVoronoi(seeds);
-  svg.append("g")
-    .attr("class", styles.voronoiGroup)
-    .selectAll("path")
-    .data(voronoi.polygons().features)
-    .enter()
-    .append('path')
-    .attr('d', path)
-    .attr('class', styles.voronoiCell);
-
   console.log(voronoi.polygons().features);
+
+  // --- Setup update function ---
+  updateFnRef.current = function (data, lat, lon, radius) {
+    console.log("Updating Voronoi diagram with backend GA data:", data);
+    // Clear existing Voronoi cells + seeds 
+    clearVoronoi(svg);
+
+    // Extract SEEDS from backend 
+    const seedFeatures = data.voronoi_edges.seeds;
+    const seeds = seedFeatures.map(f => {
+      const [lat, lon] = f.geometry.coordinates;
+      return { lat: lat, lon: lon };
+    });
+
+    // Extract POLYGONS from backend 
+    const polygons = data.voronoi_edges.polygons.map(f => {
+      const ring = f.geometry.coordinates.map(([lat, lon]) => [lon, lat]);
+      return {
+        type: "Feature", geometry: {
+          type: "Polygon", coordinates: [ring] // wrap ring! 
+        }
+      };
+    });
+
+    // Clear old box
+    svg.selectAll(".bboxGroup > *").remove();
+
+    const bbox = getBoundingBox(lat, lon, radius);
+
+    // Draw bounding box
+    const bboxPolygon = {
+      type: "Feature",
+      geometry: {
+        type: "Polygon",
+        coordinates: [[
+          [bbox.west, bbox.south],
+          [bbox.east, bbox.south],
+          [bbox.east, bbox.north],
+          [bbox.west, bbox.north],
+          [bbox.west, bbox.south]
+        ]]
+      }
+    };
+
+    // Draw rectangle 
+    bboxGroup.append("path")
+      .datum(bboxPolygon)
+      .attr("class", "boundingBox")
+      .attr("d", path);
+
+    // Apply polygon to the Voronoi paths
+    
+
+    // Draw NEW seed points
+    svg.append("g")
+      .attr("class", "seedGroup")
+      .selectAll("circle")
+      .data(seeds)
+      .enter()
+      .append("circle")
+      .attr("class", styles.airport)
+      .attr("cx", d => projection([d.lon, d.lat])[0])
+      .attr("cy", d => projection([d.lon, d.lat])[1]);
+
+    // Draw NEW Voronoi cells
+    svg.append("g")
+      .attr("class", styles.voronoiGroup)
+      .selectAll("path")
+      .data(polygons)
+      .enter()
+      .append("path")
+      .attr("class", styles.voronoiCell)
+      .attr("d", path);
+
+    console.log("Polygon sample:", polygons[0]);
+    console.log("Path result:", path(polygons[0]));
+
+    svg.selectAll("path")
+      .attr("fill", "none")
+      .attr("stroke", "black");
+  };
 
   // --- Interaction ---
   addInteraction(svg, projection, path, width, height, type);
@@ -326,7 +288,6 @@ function filter_far_side(svg, projection) {
     });
 }
 
-
 /** --- Projection factory --- **/
 function createProjection(type, width, height) {
   if (type === "globe") {
@@ -341,40 +302,96 @@ function createProjection(type, width, height) {
   }
 }
 
-/** --- Globe Rotation --- **/
+/** --- Rotation, Zoom, and Pan --- **/
 function addInteraction(svg, projection, path, width, height, type) {
   const minZoom = projection.scale();
-  const maxZoom = minZoom * 8;
+  const maxZoom = minZoom * 100;
+
+  // Track the current transform state
+  let currentTransform = d3.zoomIdentity.scale(minZoom);
 
   const zoom = d3.zoom()
     .scaleExtent([minZoom, maxZoom])
     .on("zoom", event => {
       const k = event.transform.k;
+      const prevK = currentTransform.k;
 
+      // Update projection scale
       if (k >= minZoom && k < maxZoom) {
         projection.scale(k);
       }
 
       if (event.sourceEvent) {
-        if (type === "globe") {
-          const rotate = projection.rotate();
-          const sensitivity = 1 / (k / 100); // Sensitivity decreases as zoom increases
-          projection.rotate([
-            rotate[0] + (event.sourceEvent.movementX || 0) * sensitivity,
-            rotate[1] - (event.sourceEvent.movementY || 0) * sensitivity,
-          ]);
-          // Filter out airports on the far side
-          filter_far_side(svg, projection);
+        const eventType = event.sourceEvent.type;
 
-        } else if (type === "flat") {
-          const translate = projection.translate();
-          const translateX = translate[0] + (event.sourceEvent.movementX || 0);
-          const translateY = translate[1] + (event.sourceEvent.movementY || 0);
-          const newX = Math.min(50 + (3 * k), Math.max(width - 50 - (3 * k), translateX));
-          const newY = Math.min(50 + (3 * k), Math.max(height - 50 - (3 * k), translateY));
-          projection.translate([newX, newY]);
+        // Handle wheel zoom (zoom to mouse position)
+        if (eventType === 'wheel') {
+          if (type === "globe") {
+            // Get mouse position relative to SVG
+            const [mouseX, mouseY] = d3.pointer(event.sourceEvent, svg.node());
+
+            // Invert to get geographic coordinates at mouse position
+            const coords = projection.invert([mouseX, mouseY]);
+
+            if (coords) {
+              // Calculate how much to adjust rotation to keep point under mouse
+              const rotate = projection.rotate();
+              const scaleFactor = k / prevK;
+
+              // Adjust rotation to zoom toward mouse position
+              projection.rotate([
+                rotate[0] + (coords[0] + rotate[0]) * (1 - 1 / scaleFactor) * 0.1,
+                rotate[1] + (coords[1] + rotate[1]) * (1 - 1 / scaleFactor) * 0.1,
+              ]);
+            }
+
+          } else if (type === "flat") {
+            // For flat projection, adjust translation to zoom toward mouse
+            const [mouseX, mouseY] = d3.pointer(event.sourceEvent, svg.node());
+            const translate = projection.translate();
+
+            // Calculate the offset from center
+            const dx = mouseX - translate[0];
+            const dy = mouseY - translate[1];
+
+            // Adjust translation proportional to zoom change
+            const scaleFactor = k / prevK;
+            const newTranslateX = mouseX - dx * scaleFactor;
+            const newTranslateY = mouseY - dy * scaleFactor;
+
+            // Apply bounds
+            const newX = Math.min(50 + (3 * k), Math.max(width - 50 - (3 * k), newTranslateX));
+            const newY = Math.min(50 + (3 * k), Math.max(height - 50 - (3 * k), newTranslateY));
+
+            projection.translate([newX, newY]);
+          }
+        }
+        // Handle drag (rotation/pan)
+        else if (eventType === 'mousemove' || eventType === 'pointermove') {
+          if (type === "globe") {
+            const rotate = projection.rotate();
+            const sensitivity = 1 / (k / 100); // Sensitivity decreases as zoom increases
+            projection.rotate([
+              rotate[0] + (event.sourceEvent.movementX || 0) * sensitivity,
+              rotate[1] - (event.sourceEvent.movementY || 0) * sensitivity,
+            ]);
+            // Filter out airports on the far side
+            filter_far_side(svg, projection);
+
+          } else if (type === "flat") {
+            const translate = projection.translate();
+            const translateX = translate[0] + (event.sourceEvent.movementX || 0);
+            const translateY = translate[1] + (event.sourceEvent.movementY || 0);
+            const newX = Math.min(50 + (3 * k), Math.max(width - 50 - (3 * k), translateX));
+            const newY = Math.min(50 + (3 * k), Math.max(height - 50 - (3 * k), translateY));
+            projection.translate([newX, newY]);
+          }
         }
       }
+
+      // Update current transform
+      currentTransform = event.transform;
+
       refresh(svg, path);
     });
 
@@ -392,4 +409,49 @@ function refresh(svg, path) {
     .attr("cx", d => path.projection()([d.lon, d.lat])[0])
     .attr("cy", d => path.projection()([d.lon, d.lat])[1]);
   svg.selectAll(`.${styles.voronoiCell}`).attr("d", path);
+  svg.selectAll(".boundingBox").attr("d", path);
+}
+
+/**--- Clear Points and Cells --- */
+function clearVoronoi(svg) {
+  svg.selectAll(`.${styles.voronoiCell}`).remove();
+  svg.selectAll("circle").remove();
+}
+
+
+/** --- Geodesic utility functions --- */
+function geodesicDestination(lat, lon, distanceMiles, bearingDeg) {
+  const R = 3958.8; // Earth radius in miles
+  const brng = bearingDeg * Math.PI / 180;
+  const dR = distanceMiles / R;
+
+  const lat1 = lat * Math.PI / 180;
+  const lon1 = lon * Math.PI / 180;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(dR) +
+    Math.cos(lat1) * Math.sin(dR) * Math.cos(brng)
+  );
+
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(brng) * Math.sin(dR) * Math.cos(lat1),
+    Math.cos(dR) - Math.sin(lat1) * Math.sin(lat2)
+  );
+
+  return {
+    lat: lat2 * 180 / Math.PI,
+    lon: lon2 * 180 / Math.PI
+  };
+}
+
+function getBoundingBox(lat, lon, miles) {
+  const sw = geodesicDestination(lat, lon, miles, 225);
+  const ne = geodesicDestination(lat, lon, miles, 45);
+
+  return {
+    west: sw.lon,
+    south: sw.lat,
+    east: ne.lon,
+    north: ne.lat
+  };
 }

@@ -33,8 +33,8 @@ class Organism:
     
     def to_json(self):
         return {
-            "chromosomes": "".join(self.chromosomes),
-            "fitness": self.fitness
+            "chromosomes": ''.join(self.chromosomes),
+            "fitness": self.fitness,
         }
 
 

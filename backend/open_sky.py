@@ -10,10 +10,10 @@ from geopy import Point
 from geopy.distance import geodesic
 
 DEFAULT_AIRPORT = "Dallas Fort Worth International Airport"
-AIRPORTS_DF = pd.read_csv("../common/data/airports.csv")
+#AIRPORTS_DF = pd.read_csv("../common/data/airports.csv")
 API = REST()
 
-
+'''
 def get_flights_airport(airport=DEFAULT_AIRPORT, radius=50):
     """
     Gets all flights within a certain radius around some airport.
@@ -23,7 +23,7 @@ def get_flights_airport(airport=DEFAULT_AIRPORT, radius=50):
     """
     lat, lng = _get_lat_lng(airport)
     return get_flights_lat_lng(lat, lng, radius)
-
+'''
 
 def get_flights_lat_lng(lat, lng, radius=50):
     """
@@ -67,8 +67,9 @@ def _get_bbox(lat, lng, miles):
 
     return l
 
-
+'''
 def _get_lat_lng(airport):
     row = AIRPORTS_DF.loc[AIRPORTS_DF["name"] == airport]
     lat, lng = row.iloc[0]["latitude_deg"], row.iloc[0]["longitude_deg"]
     return lat, lng
+'''
