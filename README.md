@@ -107,7 +107,15 @@ Replace the items in tags with the credentials received from the account page.
 4. Navigate to `localhost:3030` on within your local browser. The application should be hosted there.
 
 ## How to Use
-- TODO
+![Voronoi-UI.png](figures/Voronoi-UI.png)
 
-### Example Results
-* TODO
+* Enter the airport to sectorize the airspace of
+* Enter the number of generations to run the genetic algorithm over (more = better optomized)
+* Enter the number of cells in the generated vornonoi diagram (would correspond to the number of ATC personel)
+* Enter the radius of the area to generate the diagram for in miles
+
+## Limitations
+* Bounding box clipping of the Voronoi is currently non-functional due to D3 clip-polygon errors
+* Only the 3-D voronoi algorithm is displayed on the front-end, though a fully-functional 2-D one is incldued in the backend.
+* An free OpenSky accound is required to query the flight API
+* Flight data is not currently visualized
