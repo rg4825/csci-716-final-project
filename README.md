@@ -3,6 +3,8 @@ By Audrey Fuller (alf9310@rit.edu), Ricky Gupta (rg4825@rit.edu) and Lauren Kaes
 
 We aim to optimize airspace “sectors” by generating Voronoi diagrams whose seed points are evolved using a genetic algorithm. The goal is to reduce air-traffic controller workload by creating sector boundaries that better balance aircraft density, crossover frequency, and dwell time.
 
+![Voronoi-Airports.png](figures/Voronoi-Airports.png)
+
 ## Background Information
 Airspace is divided into sectors that determine which air-traffic controller tracks each aircraft. Poorly designed sectors can overload controllers or produce excessive handoffs between sectors. Prior research proposes optimization-based approaches, but practical tools that allow interactive exploration of airspace designs (especially using real flight data) are limited.
 
@@ -17,6 +19,9 @@ Airspace is divided into sectors that determine which air-traffic controller tra
 * A Voronoi diagram representing proposed airspace sectors
 * GA-optimized seed locations for the Voronoi cells
 * A web-based interactive visualization (bounding box, polygons, and seed points)
+
+![Voronoi-JFK.png](figures/Voronoi-JFK.png)
+![Voronoi-ROC.png](figures/Voronoi-ROC.png)
 
 ## Problem Domain
 Optimality matters because imbalanced sectors increase controller workload, jeopardizing safety and efficiency. However, perfect optimization is not required. A “good enough” solution that reduces worst-case workloads is sufficient because airspace constraints are noisy, dynamic, and dependent on real-time flight patterns.
