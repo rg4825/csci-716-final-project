@@ -147,21 +147,25 @@ async function renderMap(container, type = "globe", updateFnRef) {
       .attr("d", path);
   }
 
-
   // --- Initialize bounding box ---
-  svg.append("rect")
-    .attr("class", styles.boundingBox)
-    .attr("x", 0)
-    .attr("y", 0)
-    .attr("width", width)
-    .attr("height", height)
-    .attr("fill", "none")
-    .attr("stroke", "black")
-    .attr("stroke-width", 2)
-    .attr("d", path);
+  // TODO
 
   // --- Voronoi cells (optional) ---
-  // Draw seeds for each airport (only if type = large_airport)
+  // Draw Voronoi cells
+  const seeds = airports.map(airport => [airport.lon, airport.lat]);
+  console.log("Generating Voronoi diagram with", seeds.length, "seeds");
+
+  const voronoi = geoVoronoi(seeds);
+  svg.append("g")
+    .attr("class", styles.voronoiGroup)
+    .selectAll("path")
+    .data(voronoi.polygons().features)
+    .enter()
+    .append('path')
+    .attr('d', path)
+    .attr('class', styles.voronoiCell);
+
+  // Load airport data
   const airports = await d3.csv("/data/airports.csv", d => {
     if (d.type !== "large_airport") return null;
     return {
@@ -171,6 +175,7 @@ async function renderMap(container, type = "globe", updateFnRef) {
     };
   });
 
+  // Draw seeds for each airport (only if type = large_airport)
   svg
     .append("g")
     .selectAll("circle")
@@ -188,29 +193,13 @@ async function renderMap(container, type = "globe", updateFnRef) {
     filter_far_side(svg, projection);
   }
 
-  // Draw Voronoi cells
-  const seeds = airports.map(airport => [airport.lon, airport.lat]);
-  console.log("Generating Voronoi diagram with", seeds.length, "seeds");
-
-  const voronoi = geoVoronoi(seeds);
-  svg.append("g")
-    .attr("class", styles.voronoiGroup)
-    .selectAll("path")
-    .data(voronoi.polygons().features)
-    .enter()
-    .append('path')
-    .attr('d', path)
-    .attr('class', styles.voronoiCell);
-
   console.log(voronoi.polygons().features);
 
   // --- Setup update function ---
   updateFnRef.current = function (data, lat, lon, radius) {
     console.log("Updating Voronoi diagram with backend GA data:", data);
 
-    // Store bbox info for later use
-    svg.property("__bbox__", { lat, lon, baseRadius: radius });
-
+    // Clear existing Voronoi cells + seeds
     clearVoronoi(svg);
 
     // Extract SEEDS from backend
@@ -240,29 +229,11 @@ async function renderMap(container, type = "globe", updateFnRef) {
     // clip the ends of the Voronoi diagram that go beyond this box
     // Centered at (lat, lon)
     // Radius is the distance from the airport to the closest edges of the bounding square
-    const airportPoint = projection([lon, lat]);
-    const boxSize = radius * 2;
-    const bbox = [
-      [airportPoint[0] - radius, airportPoint[1] - radius],
-      [airportPoint[0] + radius, airportPoint[1] + radius]
-    ];
-
-    // Draw the bounding box 
-    svg.append("rect")
-      .attr("class", styles.boundingBox)
-      .attr("x", bbox[0][0])
-      .attr("y", bbox[0][1])
-      .attr("width", boxSize)
-      .attr("height", boxSize)
-      .attr("fill", "none")
-      .attr("stroke", "black")
-      .attr("stroke-width", 2)
-      .append("path")
-      .attr("class", styles.boundingBox)
-      .attr("d", path);
+    // TODO
 
     // Clip the Voronoi cells to the bounding box
     // --- CLIP polygons to bounding box ---
+    // TODO
 
     // Draw NEW seed points
     svg.append("g")
@@ -372,29 +343,7 @@ function refresh(svg, path) {
   svg.selectAll(`.${styles.voronoiCell}`).attr("d", path);
 
   // Reposition + scale bounding box on zoom/pan
-  const bboxInfo = svg.property("__bbox__");
-
-  if (bboxInfo) {
-    const { lat, lon, baseRadius } = bboxInfo;
-
-    const proj = path.projection();
-    const scale = proj.scale();      // current zoom level
-
-    // Pick a scaling factor relative to initial scale
-    const baseScale = bboxInfo.baseScale ?? (bboxInfo.baseScale = scale);
-    const zoomFactor = scale / baseScale;
-
-    const pixelRadius = baseRadius * zoomFactor;
-
-    const [x, y] = proj([lon, lat]);
-
-    svg
-      .selectAll(`.${styles.boundingBox}`)
-      .attr("x", x - pixelRadius)
-      .attr("y", y - pixelRadius)
-      .attr("width", pixelRadius * 2)
-      .attr("height", pixelRadius * 2);
-  }
+  // TODO
 
 }
 
