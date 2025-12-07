@@ -72,7 +72,7 @@ The fitness we chose to implement was the _average sector dwell time_, defined a
 Let n be the number of Voronoi cells (seed points) and m the number of aircraft.
 
 ### Voronoi generation:
-2D Bowyer–Watson: O(nlog⁡n)
+2D Bowyer–Watson: O(n^2)
 3D incremental convex hull: O(n^2) worst case
 
 ### Fitness evaluation:
