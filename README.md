@@ -88,6 +88,7 @@ Full cost per generation: O(nlogn + mlogn)
 The following must be installed in order for the system to run locally:
 - Docker with Docker Compose
 - A free tier account on [OpenSky](https://opensky-network.org/)
+- A local copy of the project repository [Github](https://github.com/rg4825/csci-716-final-project)
 
 All further instructions will assume that the above has been satisfied.
 
