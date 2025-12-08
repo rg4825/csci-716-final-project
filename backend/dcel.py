@@ -373,14 +373,20 @@ class DCEL:
                 for he in edges:
                     if he.twin and he.twin.face not in visible_faces:
                         border.add(he)
-            for face in visible_faces:
+            visible_face_list = list(visible_faces)
+            #for face in visible_faces:
+            while len(visible_face_list) > 0:
                 # remove unnecessary faces and edges
                 edges = face.get_edges()
-                for he in edges:
+                #for he in edges:
+                while len(edges) > 0:
+                    he = edges[0]
                     if he in border:
                         v1 = he.org
                         v2 = he.twin.org
                         self.edge_dict[(v2, v1)] = he.twin
                         self.create_face(v1, v2, v)
+                    edges.remove(he)
                     self.half_edges.discard(he)
+                visible_face_list.remove(face)
                 self.faces.discard(face)
