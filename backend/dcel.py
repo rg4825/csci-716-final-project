@@ -377,6 +377,7 @@ class DCEL:
             #for face in visible_faces:
             while len(visible_face_list) > 0:
                 # remove unnecessary faces and edges
+                face = visible_face_list[0]
                 edges = face.get_edges()
                 #for he in edges:
                 while len(edges) > 0:
